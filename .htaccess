@@ -1,0 +1,33 @@
+# ============================================================
+#  KAHFINET — Apache Security Rules
+# ============================================================
+
+Options -Indexes
+ServerSignature Off
+
+# Blokir akses ke file sensitif
+<FilesMatch "\.(sql|log|env|htaccess|htpasswd|ini|sh|bak|git)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Cegah akses langsung ke folder system & logs
+RedirectMatch 403 ^/kahfinet/system/.*$
+RedirectMatch 403 ^/kahfinet/logs/.*$
+
+# Cegah injeksi via query string
+RewriteEngine On
+RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
+RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
+RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2})
+RewriteRule .* index.php [F,L]
+
+# Tambahkan security headers via Apache
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "DENY"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    # Aktifkan jika sudah HTTPS:
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
