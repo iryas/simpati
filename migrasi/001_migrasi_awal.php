@@ -2,8 +2,8 @@
 // ============================================================
 //  MIGRASI AWAL — import file hasil mysqldump (skema + data).
 //  File .sql di sebelah ini (001_migrasi_awal.sql) dieksekusi
-//  langsung lewat koneksi PDO terpisah (multi-statement), supaya
-//  bisa bawa data yang sudah ada saat pindah ke server baru.
+//  statement per statement (bukan 1 query raksasa), supaya tidak
+//  kebentur `max_allowed_packet` di server yang settingnya kecil.
 // ============================================================
 
 $sqlFile = __DIR__ . '/001_migrasi_awal.sql';
@@ -15,9 +15,17 @@ if (!file_exists($sqlFile)) {
 // panel hosting/phpMyAdmin/CLI — dump ini tidak mengandung CREATE DATABASE.
 $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=%s', DB_HOST, DB_PORT, DB_NAME, DB_CHAR);
 $pdo = new PDO($dsn, DB_USER, DB_PASS, [
-    PDO::ATTR_ERRMODE                => PDO::ERRMODE_EXCEPTION,
-    PDO::MYSQL_ATTR_MULTI_STATEMENTS => true,
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
 ]);
 
-$sql = file_get_contents($sqlFile);
-$pdo->exec($sql);
+// mysqldump selalu nutup tiap statement dengan ";" di akhir baris, jadi
+// aman dipecah per baris yang diakhiri ";" (dump ini tidak mengandung
+// stored procedure/trigger dengan DELIMITER custom).
+$sql        = file_get_contents($sqlFile);
+$statements = preg_split('/;\s*\n/', $sql);
+
+foreach ($statements as $stmt) {
+    $stmt = trim($stmt);
+    if ($stmt === '' || str_starts_with($stmt, '--')) continue;
+    $pdo->exec($stmt);
+}
