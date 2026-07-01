@@ -105,9 +105,14 @@ $sum = db_row(
         </select>
         <label class="mb-0 text-muted" style="font-size:13px">entri</label>
       </div>
-      <button type="button" id="btnBayarMassal" class="btn btn-success btn-sm" style="display:none">
-        <i class="fas fa-money-check-alt mr-1"></i>Bayar Massal (<span id="jumlahTerpilih">0</span> terpilih)
-      </button>
+      <div style="display:none" id="aksiMassalGroup">
+        <button type="button" id="btnPotonganMassal" class="btn btn-outline-secondary btn-sm">
+          <i class="fas fa-percent mr-1"></i>Potongan Massal (<span id="jumlahTerpilihPotongan">0</span> terpilih)
+        </button>
+        <button type="button" id="btnBayarMassal" class="btn btn-success btn-sm">
+          <i class="fas fa-money-check-alt mr-1"></i>Bayar Massal (<span id="jumlahTerpilih">0</span> terpilih)
+        </button>
+      </div>
     </div>
     <div class="table-responsive">
       <table id="tabelPembayaran" class="table table-hover mb-0 w-100">
@@ -268,6 +273,81 @@ $sum = db_row(
   </div>
 </div>
 
+<!-- Modal Atur Potongan (sebelum lunas, status tetap Belum) -->
+<div class="modal fade" id="modalPotongan" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-percent mr-2"></i>Atur Potongan</h5>
+        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+      </div>
+      <form method="POST" action="<?= BASE_URL ?>modules/pembayaran/act.php">
+        <?php csrf_field(); ?>
+        <input type="hidden" name="action" value="set_potongan">
+        <input type="hidden" name="ret_bulan" value="<?= clean($bulan) ?>">
+        <input type="hidden" name="ret_search" value="<?= clean($search) ?>">
+        <input type="hidden" name="ret_status" value="<?= clean($status) ?>">
+        <input type="hidden" name="id" id="potongan_id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Pelanggan</label>
+            <input type="text" class="form-control" id="potongan_nama" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nominal Tagihan (Rp)</label>
+            <input type="text" class="form-control" id="potongan_jumlah_display" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Potongan (hari)</label>
+            <input type="number" name="potongan" id="potongan_input" class="form-control" min="0" max="30" value="0">
+            <small class="text-muted">Cuma disimpan sebagai rencana — status tagihan tetap "Belum" sampai beneran dibayar lewat tombol Bayar.</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-save mr-1"></i>Simpan Potongan
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Potongan Massal (rencana, status tetap Belum) -->
+<div class="modal fade" id="modalPotonganMassal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-percent mr-2"></i>Potongan Massal</h5>
+        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+      </div>
+      <form method="POST" action="<?= BASE_URL ?>modules/pembayaran/act.php" id="formPotonganMassal">
+        <?php csrf_field(); ?>
+        <input type="hidden" name="action" value="set_potongan_massal">
+        <input type="hidden" name="ret_bulan" value="<?= clean($bulan) ?>">
+        <input type="hidden" name="ret_search" value="<?= clean($search) ?>">
+        <input type="hidden" name="ret_status" value="<?= clean($status) ?>">
+        <div id="massalPotonganIdsContainer"></div>
+        <div class="modal-body">
+          <p class="mb-2"><span id="massalPotonganJumlahTagihan" class="font-weight-bold">0</span> tagihan akan diatur potongannya. Status tetap <span class="text-danger font-weight-bold">Belum</span> sampai dibayar.</p>
+          <div class="form-group">
+            <label class="form-label">Potongan (hari)</label>
+            <input type="number" name="potongan" id="massal_potongan_input" class="form-control" min="0" max="30" value="0">
+            <small class="text-muted">Diterapkan sama ke semua tagihan terpilih (dihitung per nominal masing-masing). Maks. 30 hari.</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-save mr-1"></i>Simpan Potongan Massal
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Bayar Massal -->
 <div class="modal fade" id="modalBayarMassal" tabindex="-1">
   <div class="modal-dialog">
@@ -285,11 +365,7 @@ $sum = db_row(
         <div id="massalIdsContainer"></div>
         <div class="modal-body">
           <p class="mb-2"><span id="massalJumlahTagihan" class="font-weight-bold">0</span> tagihan akan ditandai <span class="text-success font-weight-bold">Lunas</span>.</p>
-          <div class="form-group">
-            <label class="form-label">Potongan (hari)</label>
-            <input type="number" name="potongan" id="massal_potongan" class="form-control" min="0" max="30" value="0">
-            <small class="text-muted">Diterapkan sama ke semua tagihan terpilih (dihitung per nominal masing-masing). Maks. 30 hari.</small>
-          </div>
+          <p class="text-muted" style="font-size:12.5px">Potongan dipakai dari yang sudah diatur sebelumnya per tagihan (tombol "Atur Potongan"). Tagihan tanpa potongan terjadwal akan dianggap lunas penuh.</p>
           <div class="form-group">
             <label class="form-label">Petugas/Kasir <span class="text-danger">*</span></label>
             <select name="kasir_id" id="massal_kasir" class="form-control" required>
@@ -390,11 +466,12 @@ var tabelPembayaran = \$('#tabelPembayaran').DataTable({
   tabelPembayaran.page.len(parseInt(\$(this).val())).draw();
 });
 
-// ── Bayar Massal: checkbox per baris + pilih semua (di halaman aktif) ──
+// ── Bayar Massal & Potongan Massal: checkbox per baris + pilih semua (di halaman aktif) ──
 function refreshBayarMassalBar() {
   const n = \$('.chk-bayar-massal:checked').length;
   \$('#jumlahTerpilih').text(n);
-  \$('#btnBayarMassal').toggle(n > 0);
+  \$('#jumlahTerpilihPotongan').text(n);
+  \$('#aksiMassalGroup').toggle(n > 0);
   \$('#chkAllBayarMassal').prop('checked', n > 0 && n === \$('.chk-bayar-massal').length);
 }
 
@@ -419,13 +496,32 @@ tabelPembayaran.on('draw', function () {
   ids.forEach(function (id) { hidden += '<input type="hidden" name="ids[]" value="' + id + '">'; });
   \$('#massalIdsContainer').html(hidden);
   \$('#massalJumlahTagihan').text(ids.length);
-  \$('#massal_potongan').val(0);
   \$('#modalBayarMassal').modal('show');
 });
 
 \$('#formBayarMassal').on('submit', function (e) {
   const n = \$('#massalIdsContainer input').length;
   if (!confirm('Tandai lunas ' + n + ' tagihan terpilih?')) {
+    e.preventDefault();
+  }
+});
+
+\$('#btnPotonganMassal').on('click', function () {
+  const ids = \$('.chk-bayar-massal:checked').map(function () { return \$(this).val(); }).get();
+  if (!ids.length) return;
+
+  let hidden = '';
+  ids.forEach(function (id) { hidden += '<input type="hidden" name="ids[]" value="' + id + '">'; });
+  \$('#massalPotonganIdsContainer').html(hidden);
+  \$('#massalPotonganJumlahTagihan').text(ids.length);
+  \$('#massal_potongan_input').val(0);
+  \$('#modalPotonganMassal').modal('show');
+});
+
+\$('#formPotonganMassal').on('submit', function (e) {
+  const n = \$('#massalPotonganIdsContainer input').length;
+  const hari = parseInt(\$('#massal_potongan_input').val()) || 0;
+  if (!confirm('Atur potongan ' + hari + ' hari untuk ' + n + ' tagihan terpilih?')) {
     e.preventDefault();
   }
 });
@@ -490,11 +586,19 @@ function hitungTerbayar() {
   \$('#bayar_id').val(\$(this).data('id'));
   \$('#bayar_nama').val(\$(this).data('nama'));
   \$('#bayar_jumlah_display').val(rupiahFmt(bayarJumlah));
-  \$('#bayar_potongan').val(0);
+  \$('#bayar_potongan').val(parseInt(\$(this).data('potongan')) || 0);
   hitungTerbayar();
 });
 
 \$('#bayar_potongan').on('input', hitungTerbayar);
+
+// Modal Atur Potongan (status tetap Belum, cuma simpan rencana potongan)
+\$(document).on('click', '.btn-atur-potongan', function() {
+  \$('#potongan_id').val(\$(this).data('id'));
+  \$('#potongan_nama').val(\$(this).data('nama'));
+  \$('#potongan_jumlah_display').val(rupiahFmt(parseInt(\$(this).data('jumlah')) || 0));
+  \$('#potongan_input').val(parseInt(\$(this).data('potongan')) || 0);
+});
 
 // Modal Edit Pembayaran (admin saja)
 const petugasOptions = {$petugas_json};

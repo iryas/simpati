@@ -94,7 +94,8 @@ switch ($action) {
 
             $aksi = '';
             if ($r['status'] === 'belum') {
-                $aksi .= '<button class="btn btn-success btn-xs btn-bayar" data-id="' . (int)$r['id'] . '" data-jumlah="' . (int)$r['jumlah'] . '" data-nama="' . clean($r['nama_pelanggan']) . '" data-toggle="modal" data-target="#modalBayar" title="Bayar"><i class="fas fa-money-bill mr-1"></i>Bayar</button> ';
+                $aksi .= '<button class="btn btn-success btn-xs btn-bayar" data-id="' . (int)$r['id'] . '" data-jumlah="' . (int)$r['jumlah'] . '" data-nama="' . clean($r['nama_pelanggan']) . '" data-potongan="' . (int)$r['potongan'] . '" data-toggle="modal" data-target="#modalBayar" title="Bayar"><i class="fas fa-money-bill mr-1"></i>Bayar</button> ';
+                $aksi .= '<button class="btn btn-outline-secondary btn-xs btn-atur-potongan" data-id="' . (int)$r['id'] . '" data-jumlah="' . (int)$r['jumlah'] . '" data-nama="' . clean($r['nama_pelanggan']) . '" data-potongan="' . (int)$r['potongan'] . '" data-toggle="modal" data-target="#modalPotongan" title="Atur Potongan"><i class="fas fa-percent"></i></button> ';
             }
             if ($r['status'] === 'lunas' && $isAdmin) {
                 $aksi .= '<button class="btn btn-warning btn-xs btn-edit-bayar" data-id="' . (int)$r['id'] . '" data-toggle="modal" data-target="#modalEditBayar" title="Edit Pembayaran"><i class="fas fa-edit"></i></button> ';
@@ -109,6 +110,11 @@ switch ($action) {
             if ($r['status'] === 'lunas' && (int)$r['potongan'] > 0) {
                 $potonganCell = (int)$r['potongan'] . ' hari' .
                     '<br><small class="text-danger">- ' . rupiah((int)$r['jumlah'] - (int)$r['terbayar']) . '</small>';
+            } elseif ($r['status'] === 'belum' && (int)$r['potongan'] > 0) {
+                $haPotongan = (int)$r['jumlah'] / 30;
+                $nominalPotongan = (int)round($haPotongan * (int)$r['potongan']);
+                $potonganCell = (int)$r['potongan'] . ' hari <span class="badge badge-secondary">terjadwal</span>' .
+                    '<br><small class="text-danger">- ' . rupiah($nominalPotongan) . '</small>';
             }
 
             $checkboxCell = $r['status'] === 'belum'
@@ -257,6 +263,56 @@ switch ($action) {
         $backParams['bulan'] = $bulan;
         redirect(BASE_URL . 'modules/pembayaran/views.php?' . http_build_query($backParams));
 
+        // ── ATUR POTONGAN (rencana, status tetap "belum") ──────────
+    case 'set_potongan':
+        if (!csrf_verify()) {
+            flash('danger', 'Token tidak valid.');
+            redirect($back_url);
+        }
+
+        $id  = (int)post('id');
+        $row = db_row("SELECT * FROM pembayaran WHERE id = ? AND status = 'belum'", [$id]);
+        if (!$row) {
+            flash('danger', 'Tagihan tidak ditemukan atau sudah lunas.');
+            redirect($back_url);
+        }
+
+        $potongan = max(0, min(30, (int)post('potongan', 0)));
+        db_update('pembayaran', ['potongan' => $potongan], 'id = ?', [$id]);
+
+        flash('success', 'Potongan ' . $potongan . ' hari berhasil disimpan untuk tagihan ini.');
+        redirect($back_url);
+
+        // ── ATUR POTONGAN MASSAL (rencana, status tetap "belum") ───
+    case 'set_potongan_massal':
+        if (!csrf_verify()) {
+            flash('danger', 'Token tidak valid.');
+            redirect($back_url);
+        }
+
+        $ids = post('ids');
+        $ids = is_array($ids) ? array_map('intval', $ids) : [];
+        $ids = array_values(array_unique(array_filter($ids)));
+        if (!$ids) {
+            flash('danger', 'Tidak ada tagihan yang dipilih.');
+            redirect($back_url);
+        }
+
+        $potongan = max(0, min(30, (int)post('potongan', 0)));
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $diproses = db_query(
+            "UPDATE pembayaran SET potongan = ? WHERE status = 'belum' AND id IN ($placeholders)",
+            array_merge([$potongan], $ids)
+        )->rowCount();
+
+        $dilewati = count($ids) - $diproses;
+        $msg = "Potongan $potongan hari berhasil diatur untuk $diproses tagihan.";
+        if ($dilewati > 0) $msg .= " $dilewati tagihan dilewati (sudah lunas/tidak valid).";
+
+        flash($diproses > 0 ? 'success' : 'warning', $msg);
+        redirect($back_url);
+
         // ── BAYAR (dengan potongan) ────────────────────────────────
     case 'bayar':
         if (!csrf_verify()) {
@@ -318,17 +374,19 @@ switch ($action) {
             redirect($back_url);
         }
 
-        $potongan = max(0, min(30, (int)post('potongan', 0)));
-
+        // Potongan dipakai dari yang sudah diset duluan per baris (lewat
+        // tombol "Atur Potongan"), bukan input bareng — kalau belum diset,
+        // dianggap 0 (lunas penuh).
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $rows = db_rows(
-            "SELECT id, jumlah FROM pembayaran WHERE status = 'belum' AND id IN ($placeholders)",
+            "SELECT id, jumlah, potongan FROM pembayaran WHERE status = 'belum' AND id IN ($placeholders)",
             $ids
         );
 
         $diproses = 0;
         foreach ($rows as $row) {
             $jumlah   = (int)$row['jumlah'];
+            $potongan = max(0, min(30, (int)$row['potongan']));
             $ha       = $jumlah / 30;
             $terbayar = (int)round($jumlah - ($ha * $potongan));
 
@@ -343,7 +401,7 @@ switch ($action) {
         }
 
         $dilewati = count($ids) - $diproses;
-        $msg = "$diproses tagihan berhasil dibayar lunas" . ($potongan > 0 ? " (potongan $potongan hari)" : '') . '.';
+        $msg = "$diproses tagihan berhasil dibayar lunas.";
         if ($dilewati > 0) $msg .= " $dilewati tagihan dilewati (sudah lunas/tidak valid).";
 
         flash($diproses > 0 ? 'success' : 'warning', $msg);
