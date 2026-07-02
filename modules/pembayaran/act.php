@@ -130,7 +130,7 @@ switch ($action) {
                 'potongan'  => $potonganCell,
                 'tgl_bayar' => $r['tgl_bayar'] ? tgl_indo($r['tgl_bayar']) : '<span class="text-muted">—</span>',
                 'kasir'     => clean($r['nama_kasir'] ?? '—'),
-                'status'    => badge_status($r['status']),
+                'status'    => badge_status($r['status'], $r['bulan_tagihan']),
                 'aksi'      => $aksi,
             ];
         }
@@ -162,14 +162,18 @@ switch ($action) {
             redirect($back_url);
         }
 
-        $petugasId = (int)post('kasir_id') ?: current_user()['id'];
-        $petugas   = db_row("SELECT id FROM pengguna WHERE id = ? AND role IN ('admin','kasir')", [$petugasId]);
-        if (!$petugas) {
-            flash('danger', 'Petugas/kasir tidak valid.');
-            redirect($back_url);
+        $status = post('status', 'lunas');
+
+        $petugasId = null;
+        if ($status === 'lunas') {
+            $petugasId = (int)post('kasir_id') ?: current_user()['id'];
+            $petugas   = db_row("SELECT id FROM pengguna WHERE id = ? AND role IN ('admin','kasir')", [$petugasId]);
+            if (!$petugas) {
+                flash('danger', 'Petugas/kasir tidak valid.');
+                redirect($back_url);
+            }
         }
 
-        $status   = post('status', 'lunas');
         $jumlah   = (int)post('jumlah');
         $potongan = $status === 'lunas' ? max(0, min(30, (int)post('potongan', 0))) : 0;
         $ha       = $jumlah / 30;
@@ -187,7 +191,7 @@ switch ($action) {
             'kasir_id'      => $petugasId,
             'jumlah'        => $jumlah,
             'bulan_tagihan' => $bulan_tagihan,
-            'tgl_bayar'     => post('tgl_bayar') ?: ($status === 'lunas' ? date('Y-m-d') : null),
+            'tgl_bayar'     => $status === 'lunas' ? (post('tgl_bayar') ?: date('Y-m-d')) : null,
             'status'        => $status,
             'potongan'      => $potongan,
             'terbayar'      => $terbayar,

@@ -23,13 +23,30 @@ $belum_bayar     = db_row(
     [$bulan_ini]
 )['n'] ?? 0;
 
-// ── Pembayaran terbaru ────────────────────────────────────────
+$tunggakan_count = db_row(
+    "SELECT COUNT(*) as n FROM pembayaran WHERE status='belum' AND bulan_tagihan < ?",
+    [$bulan_ini]
+)['n'] ?? 0;
+
+// ── Pembayaran terbaru (lunas bulan ini, termasuk pelunasan tunggakan) ──
 $recent_payments = db_rows(
     "SELECT p.*, pl.nama as nama_pelanggan, pk.nama as nama_paket
      FROM pembayaran p
      LEFT JOIN pelanggan pl ON pl.id = p.pelanggan_id
      LEFT JOIN paket pk ON pk.id = p.paket_id
-     ORDER BY p.id DESC LIMIT 8"
+     WHERE p.status = 'lunas' AND DATE_FORMAT(p.tgl_bayar, '%Y-%m') = ?
+     ORDER BY p.tgl_bayar DESC, p.id DESC LIMIT 8",
+    [$bulan_ini]
+);
+
+// ── Tagihan belum lunas (bulan ini + tunggakan) ───────────────
+$belum_payments = db_rows(
+    "SELECT p.*, pl.nama as nama_pelanggan, pk.nama as nama_paket
+     FROM pembayaran p
+     LEFT JOIN pelanggan pl ON pl.id = p.pelanggan_id
+     LEFT JOIN paket pk ON pk.id = p.paket_id
+     WHERE p.status = 'belum'
+     ORDER BY p.bulan_tagihan ASC, p.id ASC LIMIT 10"
 );
 
 // ── Pelanggan baru ────────────────────────────────────────────
@@ -109,44 +126,120 @@ ob_start();
 
 <!-- Row: Recent Payments + New Customers -->
 <div class="row">
-  <!-- Pembayaran Terbaru -->
+  <!-- Pembayaran Bulan Ini (tab) -->
   <?php if (in_array(current_user()['role'], [ROLE_ADMIN, ROLE_KASIR])): ?>
+  <?php
+    $terbaru_count = count($recent_payments);
+    $belum_tab_count = count($belum_payments);
+  ?>
   <div class="col-lg-8 mb-4">
     <div class="card h-100">
-      <div class="card-header">
-        <span><i class="fas fa-receipt mr-2 text-primary"></i>Pembayaran Terbaru</span>
-        <a href="<?= BASE_URL ?>modules/pembayaran/views.php" class="btn btn-sm btn-outline-primary">
-          Lihat Semua
-        </a>
+      <div class="card-header d-flex align-items-center justify-content-between flex-wrap" style="gap:8px;padding-bottom:0;border-bottom:0">
+        <span><i class="fas fa-receipt mr-2 text-primary"></i>Pembayaran Bulan Ini</span>
+        <a href="<?= BASE_URL ?>modules/pembayaran/views.php" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
       </div>
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover mb-0">
-            <thead>
-              <tr>
-                <th>Pelanggan</th>
-                <th>Paket</th>
-                <th>Jumlah</th>
-                <th>Tanggal</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php if ($recent_payments): ?>
-                <?php foreach ($recent_payments as $p): ?>
-                <tr>
-                  <td><?= clean($p['nama_pelanggan']) ?></td>
-                  <td><?= clean($p['nama_paket']) ?></td>
-                  <td><?= rupiah((int)$p['jumlah']) ?></td>
-                  <td><?= $p['tgl_bayar'] ? tgl_indo($p['tgl_bayar']) : '<span class="text-muted">—</span>' ?></td>
-                  <td><?= badge_status($p['status']) ?></td>
-                </tr>
-                <?php endforeach; ?>
-              <?php else: ?>
-                <tr><td colspan="5" class="text-center text-muted py-4">Belum ada data pembayaran.</td></tr>
+      <!-- Tabs -->
+      <div class="px-3 pt-2">
+        <ul class="nav nav-tabs" id="tabPembayaran" role="tablist" style="border-bottom:1px solid #dee2e6">
+          <li class="nav-item">
+            <a class="nav-link active" id="tab-terbaru-link" data-toggle="tab" href="#tab-terbaru" role="tab">
+              Terbaru
+              <span class="badge badge-success ml-1"><?= $terbaru_count ?></span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="tab-belum-link" data-toggle="tab" href="#tab-belum" role="tab">
+              Belum Lunas
+              <?php if ($belum_tab_count > 0): ?>
+                <span class="badge badge-danger ml-1"><?= $belum_tab_count ?></span>
               <?php endif; ?>
-            </tbody>
-          </table>
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div class="tab-content">
+        <!-- Tab Terbaru -->
+        <div class="tab-pane fade show active" id="tab-terbaru" role="tabpanel">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0" style="font-size:13px">
+              <thead>
+                <tr>
+                  <th>Pelanggan</th>
+                  <th>Jumlah</th>
+                  <th>Tgl Bayar</th>
+                  <th>Ket</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php if ($recent_payments): ?>
+                  <?php foreach ($recent_payments as $p): ?>
+                  <?php $isTunggakan = $p['bulan_tagihan'] < $bulan_ini; ?>
+                  <tr>
+                    <td>
+                      <div class="font-weight-bold"><?= clean($p['nama_pelanggan']) ?></div>
+                      <small class="text-muted"><?= clean($p['nama_paket'] ?? '—') ?></small>
+                    </td>
+                    <td>
+                      <?= rupiah((int)$p['terbayar'] ?: (int)$p['jumlah']) ?>
+                      <?php if ((int)$p['potongan'] > 0): ?>
+                        <br><small class="text-danger">- <?= rupiah((int)$p['jumlah'] - (int)$p['terbayar']) ?></small>
+                      <?php endif; ?>
+                    </td>
+                    <td><?= tgl_indo($p['tgl_bayar']) ?></td>
+                    <td>
+                      <?php if ($isTunggakan): ?>
+                        <span class="badge badge-warning">Tunggakan</span>
+                        <br><small class="text-muted"><?= date('M Y', strtotime($p['bulan_tagihan'] . '-01')) ?></small>
+                      <?php else: ?>
+                        <span class="badge badge-success">Lunas</span>
+                      <?php endif; ?>
+                    </td>
+                  </tr>
+                  <?php endforeach; ?>
+                <?php else: ?>
+                  <tr><td colspan="4" class="text-center text-muted py-4">Belum ada pembayaran bulan ini.</td></tr>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab Belum Lunas -->
+        <div class="tab-pane fade" id="tab-belum" role="tabpanel">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0" style="font-size:13px">
+              <thead>
+                <tr>
+                  <th>Pelanggan</th>
+                  <th>Tagihan</th>
+                  <th>Bulan</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php if ($belum_payments): ?>
+                  <?php foreach ($belum_payments as $p): ?>
+                  <tr>
+                    <td>
+                      <div class="font-weight-bold"><?= clean($p['nama_pelanggan']) ?></div>
+                      <small class="text-muted"><?= clean($p['nama_paket'] ?? '—') ?></small>
+                    </td>
+                    <td>
+                      <?= rupiah((int)$p['jumlah']) ?>
+                      <?php if ((int)$p['potongan'] > 0): ?>
+                        <br><small class="text-warning"><?= $p['potongan'] ?> hari terjadwal</small>
+                      <?php endif; ?>
+                    </td>
+                    <td><?= date('M Y', strtotime($p['bulan_tagihan'] . '-01')) ?></td>
+                    <td><?= badge_status('belum', $p['bulan_tagihan']) ?></td>
+                  </tr>
+                  <?php endforeach; ?>
+                <?php else: ?>
+                  <tr><td colspan="4" class="text-center text-muted py-4">Semua tagihan sudah lunas.</td></tr>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

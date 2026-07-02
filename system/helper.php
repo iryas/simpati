@@ -54,18 +54,23 @@ function tgl_indo(string $date, bool $withTime = false): string {
 }
 
 // ── Badge Status ──────────────────────────────────────────────
-function badge_status(string $status): string {
+// $bulan_tagihan (format 'Y-m') dipakai untuk membedakan "Belum Lunas" vs "Tunggakan"
+function badge_status(string $status, ?string $bulan_tagihan = null): string {
+    if ($status === 'belum') {
+        if ($bulan_tagihan && $bulan_tagihan < date('Y-m')) {
+            return '<span class="badge badge-warning">Tunggakan</span>';
+        }
+        return '<span class="badge badge-danger">Belum Lunas</span>';
+    }
     $map = [
-        'aktif'     => 'success',
-        'nonaktif'  => 'secondary',
-        'isolir'    => 'warning',
-        'lunas'     => 'success',
-        'belum'     => 'danger',
-        'menunggak' => 'danger',
-        'pending'   => 'info',
+        'aktif'    => ['success',   'Aktif'],
+        'nonaktif' => ['secondary', 'Nonaktif'],
+        'isolir'   => ['warning',   'Isolir'],
+        'lunas'    => ['success',   'Lunas'],
+        'pending'  => ['info',      'Pending'],
     ];
-    $color = $map[strtolower($status)] ?? 'secondary';
-    return '<span class="badge badge-' . $color . '">' . clean(ucfirst($status)) . '</span>';
+    [$color, $label] = $map[strtolower($status)] ?? ['secondary', ucfirst($status)];
+    return '<span class="badge badge-' . $color . '">' . clean($label) . '</span>';
 }
 
 // ── Badge Role ────────────────────────────────────────────────
