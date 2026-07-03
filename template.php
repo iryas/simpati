@@ -121,6 +121,11 @@ $user = current_user();
 
       <?php if ($user['role'] === ROLE_ADMIN): ?>
         <li class="nav-label">PENGATURAN</li>
+        <li class="nav-item <?= ($active_menu ?? '') === 'pengaturan' ? 'active' : '' ?>">
+          <a href="<?= BASE_URL ?>modules/pengaturan/views.php">
+            <i class="fas fa-cog"></i><span>Pengaturan</span>
+          </a>
+        </li>
         <li class="nav-item <?= ($active_menu ?? '') === 'pengguna' ? 'active' : '' ?>">
           <a href="<?= BASE_URL ?>modules/pengguna/views.php">
             <i class="fas fa-user-shield"></i><span>Pengguna</span>

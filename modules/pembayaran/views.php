@@ -13,6 +13,12 @@ $bulan  = get('bulan', date('Y-m'));
 $pelanggans = db_rows("SELECT id, nama, no_hp, paket_id FROM pelanggan WHERE status='aktif' ORDER BY nama");
 $petugas    = db_rows("SELECT id, nama FROM pengguna WHERE role IN ('admin','kasir') AND status='aktif' ORDER BY nama");
 
+// ── Setting tagihan ───────────────────────────────────────────
+$tgl_mulai      = (int)app_setting('tgl_mulai_tagihan', '1');
+$bulan_now      = date('Y-m');
+$boleh_generate = ($bulan !== $bulan_now) || (date('j') >= $tgl_mulai);
+$label_periode  = label_periode_tagihan($bulan, $tgl_mulai);
+
 $page_title  = 'Pembayaran';
 $active_menu = 'pembayaran';
 
@@ -20,7 +26,12 @@ ob_start();
 ?>
 
 <div class="page-header">
-  <h5><i class="fas fa-money-bill-wave mr-2 text-primary"></i>Data Pembayaran</h5>
+  <h5>
+    <i class="fas fa-money-bill-wave mr-2 text-primary"></i>Data Pembayaran
+    <small class="text-muted ml-2" style="font-size:13px;font-weight:normal">
+      Periode <?= $label_periode ?>
+    </small>
+  </h5>
   <div class="d-flex" style="gap:8px">
     <form method="POST" action="<?= BASE_URL ?>modules/pembayaran/act.php" id="formGenerate" class="d-inline">
       <?php csrf_field(); ?>
@@ -28,9 +39,16 @@ ob_start();
       <input type="hidden" name="bulan" value="<?= clean($bulan) ?>">
       <input type="hidden" name="ret_search" value="<?= clean($search) ?>">
       <input type="hidden" name="ret_status" value="<?= clean($status) ?>">
-      <button type="submit" class="btn btn-outline-primary btn-sm">
-        <i class="fas fa-bolt mr-1"></i>Generate Pembayaran
-      </button>
+      <?php if ($boleh_generate): ?>
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+          <i class="fas fa-bolt mr-1"></i>Generate Pembayaran
+        </button>
+      <?php else: ?>
+        <button type="button" class="btn btn-outline-secondary btn-sm" disabled
+                title="Generate baru boleh mulai tgl <?= $tgl_mulai ?>">
+          <i class="fas fa-lock mr-1"></i>Generate (mulai tgl <?= $tgl_mulai ?>)
+        </button>
+      <?php endif; ?>
     </form>
     <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modalTambah">
       <i class="fas fa-plus mr-1"></i>Catat Pembayaran
@@ -41,31 +59,38 @@ ob_start();
 <!-- Summary bulan ini -->
 <?php
 $sum = db_row(
-    "SELECT COALESCE(SUM(CASE WHEN status='lunas' THEN terbayar ELSE 0 END),0) as lunas,
-            COUNT(CASE WHEN status='lunas' THEN 1 END) as n_lunas,
-            COUNT(CASE WHEN status='belum' THEN 1 END) as n_belum
+    "SELECT COALESCE(SUM(CASE WHEN status='lunas' THEN terbayar ELSE 0 END),0) as total_lunas,
+            COUNT(CASE WHEN status='lunas' THEN 1 END) as n_lunas
      FROM pembayaran WHERE bulan_tagihan = ?",
+    [$bulan]
+);
+$tung = db_row(
+    "SELECT COUNT(*) as n_tunggakan,
+            COALESCE(SUM(jumlah - ROUND(jumlah / 30 * potongan)), 0) as total_tunggakan
+     FROM pembayaran WHERE status = 'belum' AND bulan_tagihan = ?",
     [$bulan]
 );
 ?>
 <div class="row mb-3">
   <div class="col-md-4 mb-2">
-    <div class="card border-left-success" style="border-left:4px solid #10b981">
+    <div class="card" style="border-left:4px solid #10b981">
       <div class="card-body py-3">
-        <div class="text-muted" style="font-size:12px">Total Lunas Bulan <?= date('M Y', strtotime($bulan.'-01')) ?></div>
-        <div class="font-weight-bold text-success" style="font-size:18px">
-          <?= rupiah((int)$sum['lunas']) ?>
+        <div class="text-muted font-weight-bold" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px">Lunas</div>
+        <div class="font-weight-bold text-success mt-1" style="font-size:20px">
+          <?= rupiah((int)$sum['total_lunas']) ?>
         </div>
-        <small class="text-muted"><?= $sum['n_lunas'] ?> melunasi</small>
+        <small class="text-muted"><?= (int)$sum['n_lunas'] ?> transaksi</small>
       </div>
     </div>
   </div>
   <div class="col-md-4 mb-2">
     <div class="card" style="border-left:4px solid #ef4444">
       <div class="card-body py-3">
-        <div class="text-muted" style="font-size:12px">Belum Bayar</div>
-        <div class="font-weight-bold text-danger" style="font-size:18px"><?= $sum['n_belum'] ?> tagihan</div>
-        <small class="text-muted">Bulan <?= date('M Y', strtotime($bulan.'-01')) ?></small>
+        <div class="text-muted font-weight-bold" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px">Belum Lunas</div>
+        <div class="font-weight-bold text-danger mt-1" style="font-size:20px">
+          <?= rupiah((int)$tung['total_tunggakan']) ?>
+        </div>
+        <small class="text-muted"><?= (int)$tung['n_tunggakan'] ?> tagihan</small>
       </div>
     </div>
   </div>
@@ -153,7 +178,7 @@ $sum = db_row(
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Pelanggan <span class="text-danger">*</span></label>
-            <select name="pelanggan_id" class="form-control" id="selectPelanggan" required>
+            <select name="pelanggan_id" class="form-control select2-pelanggan" id="selectPelanggan" required>
               <option value="">— Pilih Pelanggan —</option>
               <?php foreach ($pelanggans as $pl): ?>
               <option value="<?= $pl['id'] ?>" data-paket="<?= $pl['paket_id'] ?>">
@@ -558,6 +583,18 @@ function toggleBlokPotonganTambah() {
   \$('#inputPotongan').val(0);
   \$('#inputTglBayar').val('{$today}');
   toggleBlokPotonganTambah();
+  // Init Select2 dengan dropdownParent agar z-index di dalam modal tidak bermasalah
+  if (!\$('#selectPelanggan').hasClass('select2-hidden-accessible')) {
+    \$('#selectPelanggan').select2({
+      dropdownParent: \$('#modalTambah'),
+      placeholder: '— Pilih Pelanggan —',
+      allowClear: true,
+      width: '100%',
+    });
+  }
+  \$('#selectPelanggan').val('').trigger('change');
+  \$('#inputJumlah').val('');
+  \$('#inputTerbayarDisplay').val('');
 });
 
 // Konfirmasi sebelum generate tagihan massal

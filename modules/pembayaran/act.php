@@ -219,6 +219,14 @@ switch ($action) {
             $bulan = date('Y-m');
         }
 
+        // Blokir generate jika bulan berjalan dan belum sampai tgl_mulai_tagihan
+        $tgl_mulai = (int)app_setting('tgl_mulai_tagihan', '1');
+        if ($bulan === date('Y-m') && date('j') < $tgl_mulai) {
+            flash('warning', "Generate tagihan bulan ini baru boleh mulai tanggal $tgl_mulai.");
+            $backParams['bulan'] = $bulan;
+            redirect(BASE_URL . 'modules/pembayaran/views.php?' . http_build_query($backParams));
+        }
+
         $pelanggans = db_rows(
             "SELECT pl.id, pl.paket_id, pk.harga
              FROM pelanggan pl
@@ -239,6 +247,10 @@ switch ($action) {
                 continue;
             }
 
+            // tgl_jatuh_tempo = tgl_mulai di bulan tagihan
+            [$bln_y, $bln_m] = explode('-', $bulan);
+            $jatuh_tempo = sprintf('%04d-%02d-%02d', $bln_y, $bln_m, $tgl_mulai);
+
             db_insert('pembayaran', [
                 'pelanggan_id'    => $pl['id'],
                 'paket_id'        => $pl['paket_id'],
@@ -247,7 +259,7 @@ switch ($action) {
                 'potongan'        => 0,
                 'terbayar'        => 0,
                 'bulan_tagihan'   => $bulan,
-                'tgl_jatuh_tempo' => null,
+                'tgl_jatuh_tempo' => $jatuh_tempo,
                 'tgl_bayar'       => null,
                 'status'          => 'belum',
                 'created_at'      => date('Y-m-d H:i:s'),

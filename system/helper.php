@@ -3,6 +3,35 @@
 //  KAHFINET - Helper Functions (Diperkuat)
 // ============================================================
 
+// ── Label Periode Tagihan ─────────────────────────────────────
+// Hitung periode "bayar dulu baru pakai" dari bulan_tagihan (Y-m) + tgl_mulai.
+// Hasil: "20 Jul – 19 Agu 2026" atau "20 Des 2025 – 19 Jan 2026"
+function label_periode_tagihan(string $bulan_ym, int $tgl_mulai): string {
+    static $bln_indo = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    $ts   = strtotime($bulan_ym . '-01');
+    $bln  = (int)date('n', $ts);
+    $thn  = (int)date('Y', $ts);
+    $ts_s = mktime(0, 0, 0, $bln, $tgl_mulai, $thn);
+    $ts_e = mktime(0, 0, 0, $bln + 1, $tgl_mulai - 1, $thn);
+    $tgl_e = (int)date('j', $ts_e);
+    $yr_s  = date('Y', $ts_s);
+    $yr_e  = date('Y', $ts_e);
+    $left  = $tgl_mulai . ' ' . $bln_indo[(int)date('n', $ts_s)];
+    $right = $tgl_e . ' ' . $bln_indo[(int)date('n', $ts_e)] . ' ' . $yr_e;
+    if ($yr_s !== $yr_e) $left .= ' ' . $yr_s;
+    return $left . ' – ' . $right;
+}
+
+// ── App Settings ─────────────────────────────────────────────
+function app_setting(string $key, string $default = ''): string {
+    static $cache = [];
+    if (!array_key_exists($key, $cache)) {
+        $row = db_row("SELECT setting_val FROM app_settings WHERE setting_key = ? LIMIT 1", [$key]);
+        $cache[$key] = $row ? (string)$row['setting_val'] : $default;
+    }
+    return $cache[$key];
+}
+
 // ── Redirect ─────────────────────────────────────────────────
 function redirect(string $url): never {
     // Cegah open redirect: hanya izinkan URL yang berawalan BASE_URL
