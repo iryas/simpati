@@ -69,10 +69,14 @@ switch ($action) {
         )['n'];
 
         $rows = db_rows(
-            "SELECT py.*, pl.nama as nama_pelanggan, pl.no_hp, u.nama as nama_kasir
+            "SELECT py.*, pl.nama as nama_pelanggan, pl.no_hp, u.nama as nama_kasir,
+                    wl.status as wa_status, wl.created_at as wa_sent_at, wl.keterangan as wa_ket
              FROM pembayaran py
              LEFT JOIN pelanggan pl ON pl.id = py.pelanggan_id
              LEFT JOIN pengguna u ON u.id = py.kasir_id
+             LEFT JOIN wa_log wl ON wl.id = (
+                 SELECT MAX(id) FROM wa_log WHERE pembayaran_id = py.id
+             )
              WHERE $where
              ORDER BY $orderBy $orderDir
              LIMIT $length OFFSET $start",
@@ -121,6 +125,30 @@ switch ($action) {
                 ? '<input type="checkbox" class="chk-bayar-massal" value="' . (int)$r['id'] . '">'
                 : '';
 
+            // Kolom status WA
+            $waCell = '<span class="text-muted">—</span>';
+            if ($r['status'] === 'lunas') {
+                if ($r['wa_status'] === 'terkirim') {
+                    $waCell = '<span class="badge badge-success"><i class="fas fa-check mr-1"></i>Terkirim</span>'
+                        . '<br><small class="text-muted">' . tgl_indo($r['wa_sent_at'], true) . '</small>';
+                } elseif ($r['wa_status'] === 'gagal') {
+                    $waCell = '<span class="badge badge-danger"><i class="fas fa-times mr-1"></i>Gagal</span>'
+                        . '<br><small class="text-muted" title="' . clean($r['wa_ket'] ?? '') . '">'
+                        . mb_substr(clean($r['wa_ket'] ?? ''), 0, 30) . '</small>';
+                    if (!empty($r['no_hp'])) {
+                        $waCell .= '<br><button class="btn btn-xs btn-outline-success btn-kirim-ulang mt-1"'
+                            . ' data-id="' . (int)$r['id'] . '">'
+                            . '<i class="fab fa-whatsapp mr-1"></i>Kirim Ulang</button>';
+                    }
+                } elseif (!empty($r['no_hp']) && app_setting('wablas_aktif', '0') === '1') {
+                    // Lunas tapi belum ada log WA sama sekali
+                    $waCell = '<span class="badge badge-secondary">Belum dikirim</span>'
+                        . '<br><button class="btn btn-xs btn-outline-success btn-kirim-ulang mt-1"'
+                        . ' data-id="' . (int)$r['id'] . '">'
+                        . '<i class="fab fa-whatsapp mr-1"></i>Kirim</button>';
+                }
+            }
+
             $data[] = [
                 'no'        => $start + $i + 1,
                 'checkbox'  => $checkboxCell,
@@ -131,6 +159,7 @@ switch ($action) {
                 'tgl_bayar' => $r['tgl_bayar'] ? tgl_indo($r['tgl_bayar']) : '<span class="text-muted">—</span>',
                 'kasir'     => clean($r['nama_kasir'] ?? '—'),
                 'status'    => badge_status($r['status'], $r['bulan_tagihan']),
+                'wa'        => $waCell,
                 'aksi'      => $aksi,
             ];
         }
@@ -359,13 +388,31 @@ switch ($action) {
 
         db_update('pembayaran', [
             'status'    => 'lunas',
-            'tgl_bayar' => date('Y-m-d'),
+            'tgl_bayar' => date('Y-m-d H:i:s'),
             'kasir_id'  => $petugasId,
             'potongan'  => $potongan,
             'terbayar'  => $terbayar,
         ], 'id = ?', [$id]);
 
-        flash('success', 'Pembayaran berhasil dikonfirmasi sebesar ' . rupiah($terbayar) . '.');
+        // Kirim bukti pembayaran via WhatsApp
+        $row_wa = db_row(
+            "SELECT py.*, pl.nama AS nama_pelanggan, pl.no_hp, pk.nama AS nama_paket
+             FROM pembayaran py
+             LEFT JOIN pelanggan pl ON pl.id = py.pelanggan_id
+             LEFT JOIN paket pk     ON pk.id = py.paket_id
+             WHERE py.id = ?",
+            [$id]
+        );
+        $wa_ket = '';
+        if ($row_wa && !empty($row_wa['no_hp'])) {
+            $pesan  = format_pesan_bukti_bayar($row_wa);
+            $wa_res = kirim_wa_wablas($row_wa['no_hp'], $pesan, $id);
+            if ($wa_res['ok']) {
+                $wa_ket = ' WA terkirim ke ' . $row_wa['no_hp'] . '.';
+            }
+        }
+
+        flash('success', 'Pembayaran berhasil dikonfirmasi sebesar ' . rupiah($terbayar) . '.' . $wa_ket);
         redirect($back_url);
 
         // ── BAYAR MASSAL (banyak tagihan sekaligus, potongan sama) ──
@@ -408,7 +455,7 @@ switch ($action) {
 
             db_update('pembayaran', [
                 'status'    => 'lunas',
-                'tgl_bayar' => date('Y-m-d'),
+                'tgl_bayar' => date('Y-m-d H:i:s'),
                 'kasir_id'  => $petugasId,
                 'potongan'  => $potongan,
                 'terbayar'  => $terbayar,
@@ -468,6 +515,23 @@ switch ($action) {
         db_delete('pembayaran', 'id = ?', [$id]);
         flash('success', 'Data pembayaran berhasil dihapus.');
         redirect($back_url);
+
+    case 'kirim_ulang_wa':
+        $id  = (int)post('id');
+        $row = db_row(
+            "SELECT py.*, pl.nama AS nama_pelanggan, pl.no_hp, pk.nama AS nama_paket
+             FROM pembayaran py
+             LEFT JOIN pelanggan pl ON pl.id = py.pelanggan_id
+             LEFT JOIN paket pk     ON pk.id = py.paket_id
+             WHERE py.id = ? AND py.status = 'lunas'",
+            [$id]
+        );
+        if (!$row || empty($row['no_hp'])) {
+            json_res(false, 'Tagihan tidak ditemukan atau nomor HP kosong.');
+        }
+        $pesan  = format_pesan_bukti_bayar($row);
+        $wa_res = kirim_wa_wablas($row['no_hp'], $pesan, $id);
+        json_res($wa_res['ok'], $wa_res['ok'] ? 'WA berhasil dikirim ke ' . $row['no_hp'] . '.' : $wa_res['msg']);
 
     default:
         redirect($back_url);

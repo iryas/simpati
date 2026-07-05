@@ -201,6 +201,132 @@ function generate_token(int $length = 64): string {
     return bin2hex(random_bytes($length / 2));
 }
 
+// ── Format Nomor HP ke Format WA (62xxx) ─────────────────────
+function format_no_hp_wa(string $no_hp): string {
+    $no = preg_replace('/[^0-9]/', '', $no_hp);
+    if (str_starts_with($no, '0')) {
+        $no = '62' . substr($no, 1);
+    } elseif (!str_starts_with($no, '62')) {
+        $no = '62' . $no;
+    }
+    return $no;
+}
+
+// ── Format Teks Pesan Bukti Pembayaran untuk WA ───────────────
+// $row harus mengandung: id, jumlah, potongan, terbayar, tgl_bayar,
+//   bulan_tagihan, nama_pelanggan, no_hp, nama_paket
+function format_pesan_bukti_bayar(array $row): string {
+    $nama_isp    = app_setting('nama_isp', 'KahfiNet');
+    $jumlah      = (int)$row['jumlah'];
+    $potongan    = (int)$row['potongan'];
+    $terbayar    = (int)$row['terbayar'];
+    $nominal_pot = $jumlah - $terbayar;
+
+    $bln_indo  = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    $ts_bayar  = strtotime($row['tgl_bayar'] ?? 'now');
+    $tgl_bayar = date('d/m/Y', $ts_bayar) . ' ' . date('H:i', $ts_bayar);
+    $no_bayar  = date('Y', $ts_bayar) . '-' . date('dm', $ts_bayar) . '-' . str_pad((string)$row['id'], 3, '0', STR_PAD_LEFT);
+
+    $periode = '';
+    if (!empty($row['bulan_tagihan'])) {
+        $ts_bln  = strtotime($row['bulan_tagihan'] . '-01');
+        $periode = $bln_indo[(int)date('n', $ts_bln)] . ' ' . date('Y', $ts_bln);
+    }
+
+    $pot_text = $potongan > 0
+        ? '- ' . rupiah($nominal_pot) . ' (' . $potongan . 'h)'
+        : rupiah(0) . ' (tidak ada potongan)';
+
+    $paket = trim($row['nama_paket'] ?? '-');
+
+    // Di dalam code block (```) WA pakai monospace → label kiri, nilai rata kanan
+    $sep_tebal = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+    $sep_tipis = "──────────────────────────────";
+    $lw = 30; // lebar total baris dalam code block
+
+    // Baris: label kiri (10 char) + " : " + nilai rata kanan
+    $baris = function(string $label, string $nilai) use ($lw): string {
+        $prefix = str_pad($label, 10) . ' : ';          // 14 char
+        $sisa   = $lw - mb_strlen($prefix);
+        $val    = mb_strlen($nilai) <= $sisa
+                    ? str_pad($nilai, $sisa, ' ', STR_PAD_LEFT)
+                    : $nilai;
+        return $prefix . $val . "\n";
+    };
+
+    $msg  = "*BUKTI PEMBAYARAN IURAN*\n";
+    $msg .= "*{$nama_isp}*\n";
+    $msg .= "```\n";
+    $msg .= $sep_tebal . "\n";
+    $msg .= $baris('No. Bayar',  $no_bayar);
+    $msg .= $baris('Tgl. Bayar', $tgl_bayar);
+    $msg .= $sep_tipis . "\n";
+    $msg .= $baris('Pelanggan',  $row['nama_pelanggan']);
+    $msg .= $baris('Paket',      $paket);
+    if ($periode) $msg .= $baris('Periode', $periode);
+    $msg .= $sep_tipis . "\n";
+    $msg .= $baris('Tagihan',  rupiah($jumlah));
+    $msg .= $baris('Potongan', $pot_text);
+    $msg .= $sep_tebal . "\n";
+    $msg .= str_pad('TOTAL BAYAR', 10) . ' : ' . str_pad(rupiah($terbayar), 16, ' ', STR_PAD_LEFT) . "\n";
+    $msg .= $sep_tebal . "\n";
+    $msg .= "```\n";
+    $msg .= "Terima kasih sudah membayar! 🙏\n";
+    $msg .= "_SIMPATI · Powered by {$nama_isp}_";
+
+    return $msg;
+}
+
+// ── Kirim WA via Wablas ───────────────────────────────────────
+// Return: ['ok' => bool, 'msg' => string]
+function kirim_wa_wablas(string $no_hp, string $pesan, int $pembayaran_id = 0): array {
+    if (app_setting('wablas_aktif', '0') !== '1') {
+        return ['ok' => false, 'msg' => 'Wablas tidak aktif'];
+    }
+    $token  = app_setting('wablas_token', '');
+    $secret = app_setting('wablas_secret', '');
+    if (!$token || !$secret) {
+        return ['ok' => false, 'msg' => 'Token/secret Wablas belum diisi'];
+    }
+    $no = format_no_hp_wa($no_hp);
+    if (strlen($no) < 10) {
+        return ['ok' => false, 'msg' => 'Nomor HP tidak valid'];
+    }
+    $ch = curl_init('https://deu.wablas.com/api/send-message');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => http_build_query(['phone' => $no, 'message' => $pesan]),
+        CURLOPT_HTTPHEADER     => ['Authorization: ' . $token . '.' . $secret],
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+    $res = curl_exec($ch);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    if ($err) {
+        $result = ['ok' => false, 'msg' => 'cURL: ' . $err];
+    } else {
+        $json   = json_decode($res, true);
+        $ok     = isset($json['status']) && $json['status'] === true;
+        $result = ['ok' => $ok, 'msg' => $json['message'] ?? 'No response'];
+    }
+
+    // Simpan log ke tabel wa_log
+    if ($pembayaran_id > 0) {
+        db_insert('wa_log', [
+            'pembayaran_id' => $pembayaran_id,
+            'no_hp'         => $no,
+            'status'        => $result['ok'] ? 'terkirim' : 'gagal',
+            'keterangan'    => mb_substr($result['msg'], 0, 255),
+            'created_at'    => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    return $result;
+}
+
 // ── POST / GET helper ─────────────────────────────────────────
 function post(string $key, mixed $default = ''): mixed {
     return $_POST[$key] ?? $default;

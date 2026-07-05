@@ -46,6 +46,32 @@ switch ($action) {
         flash('success', 'Pengaturan berhasil disimpan.');
         redirect($back_url);
 
+    case 'save_wablas':
+        if (!csrf_verify()) {
+            flash('danger', 'Token tidak valid.');
+            redirect($back_url);
+        }
+
+        $wablas_aktif  = post('wablas_aktif') === '1' ? '1' : '0';
+        $wablas_token  = mb_substr(trim(post('wablas_token')), 0, 500);
+        $wablas_secret = mb_substr(trim(post('wablas_secret')), 0, 500);
+
+        foreach ([
+            'wablas_aktif'  => $wablas_aktif,
+            'wablas_token'  => $wablas_token,
+            'wablas_secret' => $wablas_secret,
+        ] as $key => $val) {
+            db_query(
+                "INSERT INTO app_settings (setting_key, setting_val)
+                 VALUES (?, ?)
+                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val), updated_at = NOW()",
+                [$key, $val]
+            );
+        }
+
+        flash('success', 'Pengaturan WhatsApp Gateway berhasil disimpan.');
+        redirect($back_url);
+
     default:
         redirect($back_url);
 }

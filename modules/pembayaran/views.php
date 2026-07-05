@@ -152,6 +152,7 @@ $tung = db_row(
             <th>Tgl Bayar</th>
             <th>Kasir</th>
             <th>Status</th>
+            <th><i class="fab fa-whatsapp"></i> WA</th>
             <th>Aksi</th>
           </tr>
         </thead>
@@ -483,6 +484,7 @@ var tabelPembayaran = \$('#tabelPembayaran').DataTable({
     { data: 'tgl_bayar' },
     { data: 'kasir', orderable: false },
     { data: 'status' },
+    { data: 'wa', orderable: false },
     { data: 'aksi', orderable: false },
   ],
 });
@@ -691,6 +693,31 @@ function hitungTerbayarEdit() {
     );
 
     \$('#edit_bayar_jumlah, #edit_bayar_potongan').on('input', hitungTerbayarEdit);
+  });
+});
+
+// ── Kirim Ulang WA ───────────────────────────────────────────
+\$(document).on('click', '.btn-kirim-ulang', function () {
+  const btn = \$(this);
+  const id  = btn.data('id');
+  btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Mengirim...');
+
+  \$.ajax({
+    url:      '{$base_url}modules/pembayaran/act.php?action=kirim_ulang_wa',
+    method:   'POST',
+    dataType: 'json',
+    data:     { id: id }
+  }).done(function (res) {
+    if (res.success) {
+      toastr.success(res.msg);
+    } else {
+      toastr.error('Gagal: ' + res.msg);
+      btn.prop('disabled', false).html('<i class="fab fa-whatsapp mr-1"></i>Kirim Ulang');
+    }
+    tabelPembayaran.ajax.reload(null, false);
+  }).fail(function () {
+    toastr.error('Terjadi kesalahan. Coba lagi.');
+    btn.prop('disabled', false).html('<i class="fab fa-whatsapp mr-1"></i>Kirim Ulang');
   });
 });
 </script>

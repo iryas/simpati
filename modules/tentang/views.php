@@ -10,6 +10,27 @@ $active_menu = 'tentang';
 
 $changelog = [
     [
+        'versi'    => '1.4.0',
+        'tanggal'  => '06 Jul 2026',
+        'label'    => 'WhatsApp Gateway & Perbaikan Data',
+        'warna'    => 'success',
+        'sections' => [
+            'Ditambahkan' => [
+                'Integrasi WhatsApp Gateway via Wablas: kirim bukti pembayaran otomatis ke pelanggan setelah kasir konfirmasi',
+                'Format pesan WA monospace dengan alignment kolom rapi: No. Bayar, Tgl. Bayar, Pelanggan, Paket, Periode, Tagihan, Potongan, Total Bayar',
+                'Pengaturan WA Gateway di modul Pengaturan: aktifkan/nonaktifkan, isi Token & Secret Key Wablas',
+                'Log pengiriman WA (tabel wa_log): mencatat status terkirim/gagal, nomor tujuan, dan waktu kirim per transaksi pembayaran',
+                'Kolom status WA di tabel Pembayaran: badge terkirim/gagal/belum dengan tombol kirim ulang',
+                'Tombol kirim ulang WA via AJAX tanpa reload halaman',
+                'Migrasi 005: sinkronisasi nomor HP pelanggan antar komputer',
+            ],
+            'Diperbaiki' => [
+                'Bug jam pembayaran selalu tampil 00:00 di bukti WA — kolom tgl_bayar diubah dari DATE ke DATETIME (Migrasi 004)',
+                'Nomor HP pelanggan diformat otomatis ke format 62xxx sebelum dikirim ke Wablas',
+            ],
+        ],
+    ],
+    [
         'versi'    => '1.3.0',
         'tanggal'  => '05 Jul 2026',
         'label'    => 'Role-Based Access Control',
