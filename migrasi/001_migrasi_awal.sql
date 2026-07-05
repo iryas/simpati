@@ -26,7 +26,7 @@ DROP TABLE IF EXISTS `acs_settings`;
 CREATE TABLE `acs_settings` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `nama` varchar(100) NOT NULL DEFAULT 'ACS Utama',
-  `base_url` varchar(255) NOT NULL COMMENT 'Contoh: http://192.168.10.107:7557',
+  `base_url` varchar(255) NOT NULL COMMENT 'Contoh: http://192.168.xx.xxx:7557',
   `username` varchar(100) DEFAULT NULL COMMENT 'Kosong jika NBI tidak pakai auth',
   `password` text DEFAULT NULL COMMENT 'Dienkripsi pakai encrypt_pppoe()',
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
@@ -43,7 +43,7 @@ CREATE TABLE `acs_settings` (
 LOCK TABLES `acs_settings` WRITE;
 /*!40000 ALTER TABLE `acs_settings` DISABLE KEYS */;
 INSERT INTO `acs_settings` VALUES
-(2,'ACS KAHFINET','http://192.168.10.107:7557',NULL,NULL,1,'2026-06-27 12:23:16','2026-06-27 12:24:07');
+(2,'ACS KAHFINET','http://192.168.xx.xxx:7557',NULL,NULL,1,'2026-06-27 12:23:16','2026-06-27 12:24:07');
 /*!40000 ALTER TABLE `acs_settings` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -247,7 +247,7 @@ CREATE TABLE `mikrotik_routers` (
 LOCK TABLES `mikrotik_routers` WRITE;
 /*!40000 ALTER TABLE `mikrotik_routers` DISABLE KEYS */;
 INSERT INTO `mikrotik_routers` VALUES
-(1,'Router TERNATE','sg18.gukotunnel.net:9382',8728,0,'appmng','wInhBSogTQHmki2yqYvlw1hzRnBzL0huZndKTmV5SXRXZFh5M3c9PQ==',1,'2026-06-24 11:57:08','2026-06-25 11:19:30');
+(1,'Router TERNATE','',8728,0,'appmgnt','wInhBSogTQHmki2yqYvlw1hzRnBzL0huZndKTmV5SXRXZFh5M3c9PQ==',1,'2026-06-24 11:57:08','2026-06-25 11:19:30');
 /*!40000 ALTER TABLE `mikrotik_routers` ENABLE KEYS */;
 UNLOCK TABLES;
 
