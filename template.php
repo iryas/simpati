@@ -37,7 +37,7 @@ $user = current_user();
   <!-- ── Sidebar ──────────────────────────────────────────────── -->
   <nav id="sidebar">
     <div class="sidebar-brand">
-      <div class="brand-icon"><i class="fas fa-wifi"></i></div>
+      <div class="brand-icon"><i class="fas fa-broadcast-tower"></i></div>
       <div class="brand-text">
         <span class="brand-name">SIMPATI</span>
         <span class="brand-sub">Manajemen ISP</span>

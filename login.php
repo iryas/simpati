@@ -1,6 +1,6 @@
 <?php
 // ============================================================
-//  KAHFINET - Halaman Login (Diperkuat)
+//  KAHFINET - Halaman Login
 // ============================================================
 require_once __DIR__ . '/system/init.php';
 
@@ -8,7 +8,6 @@ if (is_logged_in()) redirect(BASE_URL . 'index.php');
 ?>
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,240 +16,285 @@ if (is_logged_in()) redirect(BASE_URL . 'index.php');
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --brand: #2563eb;
-    }
-
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-    }
+    *, *::before, *::after { box-sizing: border-box; }
 
     body {
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #1a1f2e 0%, #2d3748 100%);
       min-height: 100vh;
       display: flex;
+      align-items: stretch;
+      margin: 0;
+      background: #0f2744;
+    }
+
+    /* ── Panel Kiri ─────────────────────────────────────── */
+    .login-left {
+      flex: 1;
+      background: linear-gradient(160deg, #0a1e3d 0%, #0f2744 40%, #1a3a6b 75%, #1e4a8a 100%);
+      display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      padding: 48px 40px;
+      position: relative;
+      overflow: hidden;
     }
 
-    .login-wrap {
-      width: 100%;
-      max-width: 420px;
-      padding: 16px;
+    .deco-circle {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(245,158,11,.1);
+      pointer-events: none;
+    }
+    .deco-circle-1 { width: 380px; height: 380px; top: -100px; left: -100px; }
+    .deco-circle-2 { width: 260px; height: 260px; bottom: -60px; right: -60px; }
+    .deco-circle-3 { width: 140px; height: 140px; bottom: 80px; left: 40px; border-color: rgba(245,158,11,.06); }
+
+    .brand-icon {
+      width: 72px; height: 72px;
+      background: linear-gradient(135deg, #f59e0b, #fbbf24);
+      border-radius: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; color: #1a1a1a;
+      margin-bottom: 22px;
+      box-shadow: 0 12px 32px rgba(245,158,11,.3);
     }
 
-    .login-logo {
-      text-align: center;
-      margin-bottom: 28px;
+    .brand-name {
+      font-size: 28px; font-weight: 700; color: #fff;
+      letter-spacing: .5px; text-align: center;
     }
 
-    .logo-icon {
-      width: 64px;
-      height: 64px;
-      background: var(--brand);
-      border-radius: 18px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      color: #fff;
+    .brand-sub {
+      font-size: 13px; color: rgba(255,255,255,.4);
+      text-align: center; margin-top: 6px;
+    }
+
+    .brand-divider {
+      width: 44px; height: 3px;
+      background: linear-gradient(90deg, #f59e0b, #fbbf24);
+      border-radius: 2px;
+      margin: 22px auto;
+    }
+
+    .feature-item {
+      display: flex; align-items: center; gap: 12px;
       margin-bottom: 12px;
-      box-shadow: 0 8px 24px rgba(37, 99, 235, .4);
     }
 
-    .login-logo h4 {
-      color: #fff;
-      font-weight: 700;
-      margin: 0;
+    .feature-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #f59e0b;
+      flex-shrink: 0;
     }
 
-    .login-logo p {
-      color: #94a3b8;
-      font-size: 13px;
-      margin: 0;
+    .feature-text {
+      font-size: 13px; color: rgba(255,255,255,.5);
     }
 
-    .login-card {
+    /* ── Panel Kanan ─────────────────────────────────────── */
+    .login-right {
+      width: 420px;
+      flex-shrink: 0;
       background: #fff;
-      border-radius: 14px;
-      padding: 32px 28px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 48px 40px;
     }
 
-    .login-card h5 {
-      font-size: 18px;
-      font-weight: 700;
-      color: #1e293b;
+    .form-heading { font-size: 22px; font-weight: 700; color: #0f2744; margin-bottom: 4px; }
+    .form-subhead { font-size: 13px; color: #94a3b8; margin-bottom: 30px; }
+
+    .form-label-custom {
+      font-size: 11px; font-weight: 700;
+      color: #475569; letter-spacing: .6px;
+      text-transform: uppercase; margin-bottom: 6px;
+      display: block;
+    }
+
+    .input-wrap {
+      border: 1.5px solid #e2e8f0;
+      border-radius: 9px;
+      overflow: hidden;
+      background: #f8fafc;
+      display: flex;
+      align-items: stretch;
+      transition: border-color .2s, box-shadow .2s;
+      margin-bottom: 18px;
+    }
+
+    .input-wrap:focus-within {
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245,158,11,.12);
+      background: #fff;
+    }
+
+    .input-icon {
+      display: flex; align-items: center; justify-content: center;
+      width: 42px; color: #94a3b8; font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .input-wrap input {
+      flex: 1; border: none; background: transparent;
+      font-size: 13.5px; color: #1e293b;
+      padding: 10px 10px 10px 0;
+      outline: none;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .input-wrap input::placeholder { color: #cbd5e1; }
+
+    .toggle-pass {
+      display: flex; align-items: center; padding: 0 12px;
+      color: #94a3b8; cursor: pointer; background: none; border: none;
+      font-size: 14px;
+    }
+
+    .toggle-pass:hover { color: #475569; }
+
+    .remember-row {
+      display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 22px;
     }
 
-    .form-group label {
-      font-size: 13px;
-      font-weight: 600;
-      color: #374151;
-    }
-
-    /* Input group — border nyambung semua sisi */
-    .input-group {
-      border: 1.5px solid #cbd5e1;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #fff;
-      transition: border-color .2s;
-    }
-
-    .input-group:focus-within {
-      border-color: var(--brand);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
-    }
-
-    .input-group-text {
-      background: #f8fafc;
-      border: none;
-      color: #94a3b8;
-      padding: 0 12px;
-    }
-
-    .input-group .form-control {
-      border: none;
-      background: #fff;
-      font-size: 13.5px;
-      padding: .5rem .6rem;
-      box-shadow: none !important;
-      outline: none;
-    }
-
-    .input-group .form-control:focus {
-      background: #fff;
-    }
-
-    /* Tombol toggle password */
-    .input-group .btn-outline-secondary {
-      border: none;
-      border-left: 1px solid #e2e8f0;
-      background: #f8fafc;
-      color: #94a3b8;
-      border-radius: 0;
-      padding: 0 12px;
-    }
-
-    .input-group .btn-outline-secondary:hover {
-      background: #f1f5f9;
-      color: #475569;
-    }
-
-    .input-group .btn-outline-secondary:focus {
-      box-shadow: none;
+    .custom-control-label { font-size: 13px; color: #64748b; cursor: pointer; }
+    .custom-checkbox .custom-control-input:checked ~ .custom-control-label::before {
+      background-color: #f59e0b; border-color: #f59e0b;
     }
 
     .btn-login {
-      background: var(--brand);
+      width: 100%;
+      background: linear-gradient(135deg, #0f2744 0%, #1a3a6b 100%);
+      color: #fff;
       border: none;
-      font-weight: 600;
+      border-radius: 9px;
+      padding: 12px;
       font-size: 14px;
-      padding: 10px;
-      border-radius: 8px;
+      font-weight: 700;
       letter-spacing: .3px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: opacity .2s;
     }
 
-    .btn-login:hover {
-      background: #1d4ed8;
+    .btn-login::after {
+      content: '';
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      width: 5px;
+      background: linear-gradient(180deg, #f59e0b, #d97706);
     }
 
-    .btn-login:disabled {
-      opacity: .65;
-      cursor: not-allowed;
+    .btn-login:hover { opacity: .9; }
+    .btn-login:disabled { opacity: .6; cursor: not-allowed; }
+
+    .login-footer {
+      margin-top: 22px; text-align: center;
+      font-size: 11px; color: #94a3b8;
     }
 
-    .custom-control-label {
+    .login-footer strong { color: #0f2744; }
+
+    /* Alert */
+    #loginAlert {
+      border-radius: 8px;
       font-size: 13px;
+      padding: 10px 14px;
+      margin-bottom: 18px;
     }
 
-    .version-note {
-      text-align: center;
-      color: #64748b;
-      font-size: 12px;
-      margin-top: 18px;
+    /* Responsive */
+    @media (max-width: 768px) {
+      .login-left { display: none; }
+      .login-right { width: 100%; padding: 40px 28px; }
     }
   </style>
 </head>
-
 <body>
-  <div class="login-wrap">
-    <div class="login-logo">
-      <div class="logo-icon"><i class="fas fa-wifi"></i></div>
-      <h4><?= APP_NAME ?></h4>
-      <p>Portal Manajemen Pelanggan</p>
+
+  <!-- Panel Kiri -->
+  <div class="login-left">
+    <div class="deco-circle deco-circle-1"></div>
+    <div class="deco-circle deco-circle-2"></div>
+    <div class="deco-circle deco-circle-3"></div>
+
+    <div class="brand-icon"><i class="fas fa-broadcast-tower"></i></div>
+    <div class="brand-name"><?= APP_NAME ?></div>
+    <div class="brand-sub">ISP Management System</div>
+    <div class="brand-divider"></div>
+
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div class="feature-text">Manajemen pelanggan &amp; pembayaran</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div class="feature-text">Integrasi Mikrotik &amp; GenieACS</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div class="feature-text">Laporan keuangan real-time</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div class="feature-text">Role-based access control</div>
+    </div>
+  </div>
+
+  <!-- Panel Kanan -->
+  <div class="login-right">
+    <div class="form-heading">Selamat datang</div>
+    <div class="form-subhead">Masuk ke akun Anda untuk melanjutkan</div>
+
+    <div id="loginAlert" class="alert d-none">
+      <i id="loginAlertIcon" class="fas mr-2"></i><span id="loginAlertMsg"></span>
     </div>
 
-    <div class="login-card">
-      <h5>Masuk ke Sistem</h5>
+    <form method="POST" autocomplete="off" id="loginForm">
+      <?php csrf_field(); ?>
 
-      <div id="loginAlert" class="alert py-2 px-3 d-none" style="font-size:13px;">
-        <i id="loginAlertIcon" class="fas mr-1"></i>
-        <span id="loginAlertMsg"></span>
+      <label class="form-label-custom">Username</label>
+      <div class="input-wrap">
+        <div class="input-icon"><i class="fas fa-user fa-sm"></i></div>
+        <input type="text" name="username" placeholder="Masukkan username" maxlength="50" required autofocus>
       </div>
 
-      <form method="POST" autocomplete="off" id="loginForm">
-        <?php csrf_field(); ?>
-
-        <div class="form-group">
-          <label>Username</label>
-          <div class="input-group">
-            <div class="input-group-prepend">
-              <span class="input-group-text"><i class="fas fa-user fa-sm"></i></span>
-            </div>
-            <input type="text" name="username" class="form-control"
-              placeholder="Masukkan username"
-              maxlength="50"
-              required autofocus>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Password</label>
-          <div class="input-group">
-            <div class="input-group-prepend">
-              <span class="input-group-text"><i class="fas fa-lock fa-sm"></i></span>
-            </div>
-            <input type="password" name="password" id="inputPassword"
-              class="form-control" placeholder="Masukkan password"
-              maxlength="255"
-              required>
-            <div class="input-group-append">
-              <button type="button" class="btn btn-outline-secondary border-left-0"
-                id="togglePassword" tabindex="-1">
-                <i class="fas fa-eye fa-sm"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <div class="custom-control custom-checkbox">
-            <input type="checkbox" class="custom-control-input" id="remember_me" name="remember_me">
-            <label class="custom-control-label" for="remember_me">Ingat saya selama <?= REMEMBER_ME_DAYS ?> hari</label>
-          </div>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-login btn-block" id="btnLogin">
-          <i class="fas fa-sign-in-alt mr-2"></i>Masuk
+      <label class="form-label-custom">Password</label>
+      <div class="input-wrap">
+        <div class="input-icon"><i class="fas fa-lock fa-sm"></i></div>
+        <input type="password" name="password" id="inputPassword" placeholder="Masukkan password" maxlength="255" required>
+        <button type="button" class="toggle-pass" id="togglePassword" tabindex="-1">
+          <i class="fas fa-eye fa-sm"></i>
         </button>
-      </form>
-    </div>
+      </div>
 
-    <p class="version-note">&copy; <?= date('Y') ?> <?= APP_NAME ?> v<?= APP_VERSION ?></p>
+      <div class="remember-row">
+        <div class="custom-control custom-checkbox">
+          <input type="checkbox" class="custom-control-input" id="remember_me" name="remember_me">
+          <label class="custom-control-label" for="remember_me">Ingat saya selama <?= REMEMBER_ME_DAYS ?> hari</label>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-login" id="btnLogin">
+        <i class="fas fa-sign-in-alt mr-2"></i>Masuk
+      </button>
+    </form>
+
+    <div class="login-footer">
+      &copy; <?= date('Y') ?> <strong><?= clean(app_setting('nama_isp', 'KahfiNet')) ?></strong>
+      &nbsp;&middot;&nbsp; <?= APP_NAME ?> v<?= APP_VERSION ?>
+    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   <script>
-    // Toggle show/hide password
-    $('#togglePassword').on('click', function() {
+    $('#togglePassword').on('click', function () {
       const input = $('#inputPassword');
-      const icon = $(this).find('i');
+      const icon  = $(this).find('i');
       if (input.attr('type') === 'password') {
         input.attr('type', 'text');
         icon.removeClass('fa-eye').addClass('fa-eye-slash');
@@ -260,31 +304,20 @@ if (is_logged_in()) redirect(BASE_URL . 'index.php');
       }
     });
 
-    // Tampilkan alert (success belum dipakai di sini, hanya warning/danger)
     function showAlert(type, msg) {
       const icons = { danger: 'exclamation-circle', warning: 'clock' };
       $('#loginAlert')
         .removeClass('d-none alert-danger alert-warning')
-        .addClass('alert-' + type)
-        .show();
-      $('#loginAlertIcon').removeClass().addClass('fas fa-' + (icons[type] || 'exclamation-circle') + ' mr-1');
+        .addClass('alert-' + type);
+      $('#loginAlertIcon').removeClass().addClass('fas fa-' + (icons[type] || 'exclamation-circle') + ' mr-2');
       $('#loginAlertMsg').text(msg);
     }
 
-    function hideAlert() {
-      $('#loginAlert').addClass('d-none');
-    }
+    function hideAlert()              { $('#loginAlert').addClass('d-none'); }
+    function setFormDisabled(disabled){ $('#loginForm').find('input, button[type=submit]').prop('disabled', disabled); }
+    function resetSubmitBtn()         { $('#btnLogin').html('<i class="fas fa-sign-in-alt mr-2"></i>Masuk'); }
 
-    function setFormDisabled(disabled) {
-      $('#loginForm').find('input, button[type=submit]').prop('disabled', disabled);
-    }
-
-    function resetSubmitBtn() {
-      $('#btnLogin').html('<i class="fas fa-sign-in-alt mr-2"></i>Masuk');
-    }
-
-    // Submit login via AJAX
-    $('#loginForm').on('submit', function(e) {
+    $('#loginForm').on('submit', function (e) {
       e.preventDefault();
       hideAlert();
 
@@ -296,12 +329,11 @@ if (is_logged_in()) redirect(BASE_URL . 'index.php');
         method: 'POST',
         data: $(this).serialize(),
         dataType: 'json'
-      }).done(function(res) {
+      }).done(function (res) {
         if (res.success) {
           window.location.href = res.data.redirect || '<?= BASE_URL ?>index.php';
           return;
         }
-
         if (res.data && res.data.lockout) {
           showAlert('warning', res.msg);
           setFormDisabled(true);
@@ -310,7 +342,7 @@ if (is_logged_in()) redirect(BASE_URL . 'index.php');
           $btn.prop('disabled', false);
         }
         resetSubmitBtn();
-      }).fail(function() {
+      }).fail(function () {
         showAlert('danger', 'Terjadi kesalahan. Silakan coba lagi.');
         $btn.prop('disabled', false);
         resetSubmitBtn();
@@ -318,5 +350,4 @@ if (is_logged_in()) redirect(BASE_URL . 'index.php');
     });
   </script>
 </body>
-
 </html>

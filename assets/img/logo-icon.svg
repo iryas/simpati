@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="200" height="200" rx="44" fill="url(#bg)"/>
+
+  <!-- Arc kiri luar ( -->
+  <path d="M 78,62 C 50,62 50,138 78,138" stroke="#1c1c1c" stroke-width="7"   stroke-linecap="round" fill="none"/>
+  <!-- Arc kiri dalam ( -->
+  <path d="M 86,72 C 66,72 66,128 86,128" stroke="#1c1c1c" stroke-width="8"   stroke-linecap="round" fill="none"/>
+
+  <!-- Tower kaki kiri -->
+  <line x1="100" y1="54" x2="68"  y2="152" stroke="#1c1c1c" stroke-width="8.5" stroke-linecap="round"/>
+  <!-- Tower kaki kanan -->
+  <line x1="100" y1="54" x2="132" y2="152" stroke="#1c1c1c" stroke-width="8.5" stroke-linecap="round"/>
+  <!-- Crossbar tengah -->
+  <line x1="84"  y1="103" x2="116" y2="103" stroke="#1c1c1c" stroke-width="7.5" stroke-linecap="round"/>
+
+  <!-- Arc kanan dalam ) -->
+  <path d="M 114,72 C 134,72 134,128 114,128" stroke="#1c1c1c" stroke-width="8"   stroke-linecap="round" fill="none"/>
+  <!-- Arc kanan luar ) -->
+  <path d="M 122,62 C 150,62 150,138 122,138" stroke="#1c1c1c" stroke-width="7"   stroke-linecap="round" fill="none"/>
+
+  <!-- Titik antena di puncak -->
+  <circle cx="100" cy="46" r="5.5" fill="#1c1c1c"/>
+</svg>
