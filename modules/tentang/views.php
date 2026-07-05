@@ -1,0 +1,195 @@
+<?php
+// ============================================================
+//  KAHFINET - Tentang Aplikasi & Riwayat Versi
+// ============================================================
+require_once __DIR__ . '/../../system/init.php';
+auth_check();
+
+$page_title  = 'Tentang Aplikasi';
+$active_menu = 'tentang';
+
+$changelog = [
+    [
+        'versi'    => '1.3.0',
+        'tanggal'  => '05 Jul 2026',
+        'label'    => 'Role-Based Access Control',
+        'warna'    => 'primary',
+        'sections' => [
+            'Ditambahkan' => [
+                'Halaman Tentang Aplikasi dengan riwayat versi',
+                'Sidebar dinamis: menu menyesuaikan role pengguna yang login',
+                'Label sidebar "JARINGAN" untuk grup Mikrotik & ACS',
+            ],
+            'Perubahan Akses' => [
+                'Admin: akses penuh ke semua menu',
+                'Kasir: Dashboard, Daftar Pelanggan (read-only), Pembayaran, Pengeluaran, Laporan, Tentang',
+                'Teknisi: Dashboard, Daftar Pelanggan (read-only), Mikrotik, ACS, Tentang',
+                'Pelanggan CRUD dibatasi hanya Admin',
+                'Paket Internet dan Data Area dibatasi hanya Admin',
+                'Mikrotik & ACS: Teknisi bisa sync & lihat, pengaturan koneksi hanya Admin',
+            ],
+        ],
+    ],
+    [
+        'versi'    => '1.2.0',
+        'tanggal'  => '05 Jul 2026',
+        'label'    => 'Pengaturan & DataTables',
+        'warna'    => 'primary',
+        'sections' => [
+            'Ditambahkan' => [
+                'Module Pengaturan: setting nama ISP dan tanggal mulai tagihan bulanan',
+                'Tabel app_settings: penyimpanan konfigurasi berbasis key-value',
+                'Label periode tagihan (contoh: "20 Jun – 19 Jul 2026") di halaman Pembayaran dan Dashboard',
+                'Blokir generate tagihan sebelum tanggal yang ditentukan di Pengaturan',
+                'Auto-fill tanggal jatuh tempo saat generate tagihan',
+                'DataTables server-side untuk Mikrotik PPP Secret',
+                'DataTables server-side untuk ACS Device ONU',
+                'CSS pagination DataTables diseragamkan secara global',
+                'Summary card Lunas + Belum Lunas di halaman Pembayaran',
+            ],
+            'Diperbaiki' => [
+                'Format label periode tidak konsisten — sekarang selalu tampil hari mulai: "20 Jun – 19 Jul 2026"',
+                'Layout form Pengaturan yang berantakan',
+                'Nama bulan Tunggakan tampil bahasa Inggris — diganti ke Indonesia',
+            ],
+        ],
+    ],
+    [
+        'versi'    => '1.1.0',
+        'tanggal'  => '27 Jun 2026',
+        'label'    => 'Penyempurnaan Pembayaran & Dashboard',
+        'warna'    => 'success',
+        'sections' => [
+            'Ditambahkan' => [
+                'Label status baru: "Belum Lunas" (bulan berjalan) dan "Tunggakan" (bulan lampau)',
+                'Dashboard widget 3-tab: Terbaru | Belum Lunas | Tunggakan',
+                'Tab Tunggakan dikelompokkan per pelanggan dengan total per pelanggan',
+                'Select2 pada dropdown pelanggan di form modal Catat Pembayaran',
+                'Perhitungan total tunggakan memperhitungkan potongan hari',
+            ],
+            'Diperbaiki' => [
+                'Bug pembayaran manual status "Belum": tgl_bayar dan kasir tidak lagi terisi otomatis',
+                'Total tunggakan salah — sebelumnya tidak memperhitungkan potongan',
+            ],
+        ],
+    ],
+    [
+        'versi'    => '1.0.0',
+        'tanggal'  => '01 Jun 2026',
+        'label'    => 'Rilis Awal',
+        'warna'    => 'secondary',
+        'sections' => [
+            'Module' => [
+                'Dashboard: stat card pelanggan, pendapatan, widget pembayaran terbaru & tunggakan',
+                'Pelanggan: CRUD lengkap, status aktif/nonaktif/isolir, mapping PPP Secret',
+                'Paket: CRUD paket internet (nama, harga, kecepatan)',
+                'Area: CRUD area layanan',
+                'Pembayaran: generate massal, catat manual, bayar, potongan, bayar massal',
+                'Laporan: pendapatan bulanan dan laporan keuntungan',
+                'Pengeluaran: CRUD pengeluaran operasional',
+                'Pengguna: manajemen akun Admin, Kasir, Teknisi',
+                'Mikrotik: konfigurasi API, sync PPP Profile & Secret',
+                'ACS: konfigurasi GenieACS, sync Device ONU, mapping manual ke PPP Secret',
+            ],
+            'Infrastruktur' => [
+                'Autentikasi dengan proteksi brute force dan Remember Me',
+                'CSRF protection pada semua form POST',
+                'Role-based access control: Admin, Kasir, Teknisi',
+                'Sistem migrasi database (CLI runner migrasi/run.php)',
+                'DataTables server-side untuk Pelanggan, Paket, Area, Pembayaran',
+                'Bootstrap 4 + FontAwesome + Select2 + DataTables + Toastr',
+                'Dark sidebar layout dengan collapsible menu',
+            ],
+        ],
+    ],
+];
+
+ob_start();
+?>
+
+<div class="page-header">
+  <h5><i class="fas fa-info-circle mr-2 text-primary"></i>Tentang Aplikasi</h5>
+</div>
+
+<!-- Info Aplikasi -->
+<div class="row mb-4">
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-body d-flex flex-column justify-content-center" style="gap:12px">
+        <div class="d-flex align-items-center" style="gap:16px">
+          <div style="width:56px;height:56px;background:linear-gradient(135deg,#2563eb,#3b82f6);
+                      border-radius:14px;display:flex;align-items:center;justify-content:center;
+                      font-size:26px;color:#fff;flex-shrink:0">
+            <i class="fas fa-network-wired"></i>
+          </div>
+          <div>
+            <div class="font-weight-bold" style="font-size:20px;color:#1e293b"><?= APP_NAME ?></div>
+            <div class="text-muted" style="font-size:13px">ISP Management System</div>
+          </div>
+        </div>
+        <hr class="my-2">
+        <table style="font-size:13px;width:100%">
+          <tr>
+            <td class="text-muted" style="width:130px;padding:4px 0">Versi</td>
+            <td><span class="badge badge-primary" style="font-size:13px">v<?= APP_VERSION ?></span></td>
+          </tr>
+          <tr>
+            <td class="text-muted" style="padding:4px 0">Nama Aplikasi</td>
+            <td class="font-weight-bold"><?= clean(app_setting('nama_isp', 'KahfiNet')) ?></td>
+          </tr>
+          <tr>
+            <td class="text-muted" style="padding:4px 0">Platform</td>
+            <td>PHP <?= phpversion() ?></td>
+          </tr>
+          <tr>
+            <td class="text-muted" style="padding:4px 0">Dikembangkan</td>
+            <td>KahfiNet Dev Team</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Riwayat Versi -->
+<h6 class="font-weight-bold mb-3" style="font-size:15px;color:#1e293b">
+  <i class="fas fa-history mr-2 text-primary"></i>Riwayat Perubahan
+</h6>
+
+<?php foreach ($changelog as $log): ?>
+<div class="card mb-3">
+  <div class="card-header" style="cursor:pointer" data-toggle="collapse"
+       data-target="#log-<?= str_replace('.', '-', $log['versi']) ?>">
+    <div class="d-flex align-items-center justify-content-between w-100">
+      <div class="d-flex align-items-center" style="gap:10px">
+        <span class="badge badge-<?= $log['warna'] ?>" style="font-size:13px">v<?= $log['versi'] ?></span>
+        <span class="font-weight-bold" style="font-size:14px"><?= $log['label'] ?></span>
+      </div>
+      <div class="d-flex align-items-center" style="gap:12px">
+        <small class="text-muted"><?= $log['tanggal'] ?></small>
+        <i class="fas fa-chevron-down text-muted" style="font-size:12px"></i>
+      </div>
+    </div>
+  </div>
+  <div class="collapse <?= $log['versi'] === APP_VERSION ? 'show' : '' ?>"
+       id="log-<?= str_replace('.', '-', $log['versi']) ?>">
+    <div class="card-body py-3">
+      <?php foreach ($log['sections'] as $judul => $items): ?>
+        <div class="mb-3">
+          <div class="font-weight-bold mb-2" style="font-size:12px;text-transform:uppercase;
+               letter-spacing:.6px;color:#64748b"><?= $judul ?></div>
+          <ul class="mb-0 pl-4" style="font-size:13.5px">
+            <?php foreach ($items as $item): ?>
+              <li class="mb-1"><?= clean($item) ?></li>
+            <?php endforeach; ?>
+          </ul>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+</div>
+<?php endforeach; ?>
+
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/../../template.php';

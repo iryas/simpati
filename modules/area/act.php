@@ -3,7 +3,7 @@
 //  KAHFINET - Modul Data Area (Action Handler)
 // ============================================================
 require_once __DIR__ . '/../../system/init.php';
-auth_check();
+auth_role([ROLE_ADMIN]);
 
 $action   = get('action') ?: post('action');
 $back_url = BASE_URL . 'modules/area/views.php';

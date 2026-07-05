@@ -4,7 +4,7 @@
 // ============================================================
 
 define('APP_NAME',    'SIMPATI');
-define('APP_VERSION', '1.0.0');
+define('APP_VERSION', '1.3.0');
 define('BASE_URL',    'http://localhost:8000/kahfinet1/');
 
 // ── Mode Produksi ─────────────────────────────────────────────

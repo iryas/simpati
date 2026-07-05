@@ -63,31 +63,38 @@ $user = current_user();
         </a>
       </li>
 
-      <?php $masterActive = in_array($active_menu ?? '', ['area', 'pelanggan', 'status_pelanggan'], true); ?>
-      <li class="nav-item nav-item-dropdown <?= $masterActive ? 'active open' : '' ?>">
-        <a href="#submenuMaster" data-toggle="collapse" class="nav-link-dropdown"
-          aria-expanded="<?= $masterActive ? 'true' : 'false' ?>">
-          <i class="fas fa-database"></i><span>Data Master</span>
-          <i class="fas fa-chevron-down nav-dropdown-caret"></i>
-        </a>
-        <ul class="collapse nav-submenu <?= $masterActive ? 'show' : '' ?>" id="submenuMaster">
-          <li class="<?= ($active_menu ?? '') === 'area' ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>modules/area/views.php">Data Area</a>
-          </li>
-          <li class="<?= ($active_menu ?? '') === 'pelanggan' ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>modules/pelanggan/views.php">Daftar Pelanggan</a>
-          </li>
-          <li class="<?= ($active_menu ?? '') === 'status_pelanggan' ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>modules/pelanggan/status.php">Status Pelanggan</a>
-          </li>
-        </ul>
-      </li>
-
-      <li class="nav-item <?= ($active_menu ?? '') === 'paket' ? 'active' : '' ?>">
-        <a href="<?= BASE_URL ?>modules/paket/views.php">
-          <i class="fas fa-box-open"></i><span>Paket Internet</span>
-        </a>
-      </li>
+      <?php if ($user['role'] === ROLE_ADMIN): ?>
+        <?php $masterActive = in_array($active_menu ?? '', ['area', 'pelanggan', 'status_pelanggan'], true); ?>
+        <li class="nav-item nav-item-dropdown <?= $masterActive ? 'active open' : '' ?>">
+          <a href="#submenuMaster" data-toggle="collapse" class="nav-link-dropdown"
+            aria-expanded="<?= $masterActive ? 'true' : 'false' ?>">
+            <i class="fas fa-database"></i><span>Data Master</span>
+            <i class="fas fa-chevron-down nav-dropdown-caret"></i>
+          </a>
+          <ul class="collapse nav-submenu <?= $masterActive ? 'show' : '' ?>" id="submenuMaster">
+            <li class="<?= ($active_menu ?? '') === 'area' ? 'active' : '' ?>">
+              <a href="<?= BASE_URL ?>modules/area/views.php">Data Area</a>
+            </li>
+            <li class="<?= ($active_menu ?? '') === 'pelanggan' ? 'active' : '' ?>">
+              <a href="<?= BASE_URL ?>modules/pelanggan/views.php">Daftar Pelanggan</a>
+            </li>
+            <li class="<?= ($active_menu ?? '') === 'status_pelanggan' ? 'active' : '' ?>">
+              <a href="<?= BASE_URL ?>modules/pelanggan/status.php">Status Pelanggan</a>
+            </li>
+          </ul>
+        </li>
+        <li class="nav-item <?= ($active_menu ?? '') === 'paket' ? 'active' : '' ?>">
+          <a href="<?= BASE_URL ?>modules/paket/views.php">
+            <i class="fas fa-box-open"></i><span>Paket Internet</span>
+          </a>
+        </li>
+      <?php else: ?>
+        <li class="nav-item <?= ($active_menu ?? '') === 'pelanggan' ? 'active' : '' ?>">
+          <a href="<?= BASE_URL ?>modules/pelanggan/views.php">
+            <i class="fas fa-users"></i><span>Daftar Pelanggan</span>
+          </a>
+        </li>
+      <?php endif; ?>
 
       <?php if (in_array($user['role'], [ROLE_ADMIN, ROLE_KASIR])): ?>
         <li class="nav-label">KEUANGAN</li>
@@ -119,18 +126,8 @@ $user = current_user();
         </li>
       <?php endif; ?>
 
-      <?php if ($user['role'] === ROLE_ADMIN): ?>
-        <li class="nav-label">PENGATURAN</li>
-        <li class="nav-item <?= ($active_menu ?? '') === 'pengaturan' ? 'active' : '' ?>">
-          <a href="<?= BASE_URL ?>modules/pengaturan/views.php">
-            <i class="fas fa-cog"></i><span>Pengaturan</span>
-          </a>
-        </li>
-        <li class="nav-item <?= ($active_menu ?? '') === 'pengguna' ? 'active' : '' ?>">
-          <a href="<?= BASE_URL ?>modules/pengguna/views.php">
-            <i class="fas fa-user-shield"></i><span>Pengguna</span>
-          </a>
-        </li>
+      <?php if (in_array($user['role'], [ROLE_ADMIN, ROLE_TEKNISI])): ?>
+        <li class="nav-label">JARINGAN</li>
         <?php $mikrotikActive = in_array($active_menu ?? '', ['mikrotik_pengaturan', 'mikrotik_profile', 'mikrotik_secret'], true); ?>
         <li class="nav-item nav-item-dropdown <?= $mikrotikActive ? 'active open' : '' ?>">
           <a href="#submenuMikrotik" data-toggle="collapse" class="nav-link-dropdown"
@@ -139,9 +136,11 @@ $user = current_user();
             <i class="fas fa-chevron-down nav-dropdown-caret"></i>
           </a>
           <ul class="collapse nav-submenu <?= $mikrotikActive ? 'show' : '' ?>" id="submenuMikrotik">
+            <?php if ($user['role'] === ROLE_ADMIN): ?>
             <li class="<?= ($active_menu ?? '') === 'mikrotik_pengaturan' ? 'active' : '' ?>">
               <a href="<?= BASE_URL ?>modules/mikrotik/views.php">Pengaturan</a>
             </li>
+            <?php endif; ?>
             <li class="<?= ($active_menu ?? '') === 'mikrotik_profile' ? 'active' : '' ?>">
               <a href="<?= BASE_URL ?>modules/mikrotik/profile.php">Profile</a>
             </li>
@@ -158,15 +157,37 @@ $user = current_user();
             <i class="fas fa-chevron-down nav-dropdown-caret"></i>
           </a>
           <ul class="collapse nav-submenu <?= $acsActive ? 'show' : '' ?>" id="submenuAcs">
+            <?php if ($user['role'] === ROLE_ADMIN): ?>
             <li class="<?= ($active_menu ?? '') === 'acs_pengaturan' ? 'active' : '' ?>">
               <a href="<?= BASE_URL ?>modules/acs/views.php">Pengaturan</a>
             </li>
+            <?php endif; ?>
             <li class="<?= ($active_menu ?? '') === 'acs_device' ? 'active' : '' ?>">
               <a href="<?= BASE_URL ?>modules/acs/device.php">Device ONU</a>
             </li>
           </ul>
         </li>
       <?php endif; ?>
+
+      <?php if ($user['role'] === ROLE_ADMIN): ?>
+        <li class="nav-label">PENGATURAN</li>
+        <li class="nav-item <?= ($active_menu ?? '') === 'pengaturan' ? 'active' : '' ?>">
+          <a href="<?= BASE_URL ?>modules/pengaturan/views.php">
+            <i class="fas fa-cog"></i><span>Pengaturan</span>
+          </a>
+        </li>
+        <li class="nav-item <?= ($active_menu ?? '') === 'pengguna' ? 'active' : '' ?>">
+          <a href="<?= BASE_URL ?>modules/pengguna/views.php">
+            <i class="fas fa-user-shield"></i><span>Pengguna</span>
+          </a>
+        </li>
+      <?php endif; ?>
+
+        <li class="nav-item <?= ($active_menu ?? '') === 'tentang' ? 'active' : '' ?>">
+          <a href="<?= BASE_URL ?>modules/tentang/views.php">
+            <i class="fas fa-info-circle"></i><span>Tentang Aplikasi</span>
+          </a>
+        </li>
     </ul>
 
     <div class="sidebar-footer">

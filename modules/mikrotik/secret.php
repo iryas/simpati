@@ -4,9 +4,8 @@
 //  Mirror read-only dari /ppp/secret (service pppoe) di Mikrotik.
 // ============================================================
 require_once __DIR__ . '/../../system/init.php';
-auth_role([ROLE_ADMIN]);
+auth_role([ROLE_ADMIN, ROLE_TEKNISI]);
 
-$rows     = db_rows("SELECT * FROM mikrotik_secrets_cache ORDER BY name ASC");
 $lastSync = db_row("SELECT MAX(synced_at) as t FROM mikrotik_secrets_cache")['t'] ?? null;
 
 $page_title  = 'Mikrotik — PPP Secret';
@@ -32,9 +31,23 @@ ob_start();
 </p>
 
 <div class="card">
-  <div class="card-body p-0">
+  <div class="card-body p-2">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap" style="gap:8px">
+      <div class="d-flex align-items-center" style="gap:6px">
+        <label class="mb-0 text-muted" style="font-size:13px">Tampilkan</label>
+        <select id="lengthSecret" class="form-control form-control-sm" style="width:70px">
+          <option value="15">15</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+        <label class="mb-0 text-muted" style="font-size:13px">entri</label>
+      </div>
+      <input type="text" id="searchSecret" class="form-control form-control-sm"
+             placeholder="Cari username, profile, komentar…" style="max-width:260px">
+    </div>
     <div class="table-responsive">
-      <table class="table table-hover mb-0">
+      <table id="tabelSecret" class="table table-hover mb-0 w-100">
         <thead>
           <tr>
             <th>#</th>
@@ -45,35 +58,55 @@ ob_start();
             <th>Komentar</th>
           </tr>
         </thead>
-        <tbody>
-          <?php if ($rows): foreach ($rows as $i => $r): ?>
-            <tr>
-              <td><?= $i + 1 ?></td>
-              <td class="font-weight-bold"><?= clean($r['name']) ?></td>
-              <td><?= clean($r['profile'] ?? '—') ?></td>
-              <td><?= clean($r['remote_address'] ?? '—') ?></td>
-              <td>
-                <?php if ($r['disabled']): ?>
-                  <span class="badge badge-secondary">Disabled</span>
-                <?php else: ?>
-                  <span class="badge badge-success">Enabled</span>
-                <?php endif; ?>
-              </td>
-              <td><?= clean($r['comment'] ?? '—') ?></td>
-            </tr>
-          <?php endforeach; else: ?>
-            <tr>
-              <td colspan="6" class="text-center text-muted py-4">
-                Belum ada data. Klik "Sync dari Mikrotik" untuk menarik data PPP secret.
-              </td>
-            </tr>
-          <?php endif; ?>
-        </tbody>
+        <tbody></tbody>
       </table>
     </div>
   </div>
 </div>
 
 <?php
-$content = ob_get_clean();
+$content  = ob_get_clean();
+$base_url = BASE_URL;
+
+$extra_js = <<<HTML
+<script>
+var tabelSecret = \$('#tabelSecret').DataTable({
+  serverSide: true,
+  processing: true,
+  searching: true,
+  dom: 'rt<"d-flex justify-content-between align-items-center mt-2 flex-wrap"ip>',
+  pageLength: 15,
+  order: [[1, 'asc']],
+  language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json' },
+  ajax: {
+    url: '{$base_url}modules/mikrotik/act.php',
+    data: function (d) {
+      d.action = 'datatable_secrets';
+    }
+  },
+  columns: [
+    { data: 'no',             orderable: false },
+    { data: 'name' },
+    { data: 'profile' },
+    { data: 'remote_address' },
+    { data: 'status',         orderable: false },
+    { data: 'comment',        orderable: false },
+  ]
+});
+
+\$('#lengthSecret').on('change', function () {
+  tabelSecret.page.len(parseInt(\$(this).val())).draw();
+});
+
+var searchTimer;
+\$('#searchSecret').on('keyup', function () {
+  clearTimeout(searchTimer);
+  var q = \$(this).val();
+  searchTimer = setTimeout(function () {
+    tabelSecret.search(q).draw();
+  }, 300);
+});
+</script>
+HTML;
+
 require_once __DIR__ . '/../../template.php';

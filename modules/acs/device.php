@@ -6,21 +6,13 @@
 //  kendali kalau username PPPoE di device tidak konsisten.
 // ============================================================
 require_once __DIR__ . '/../../system/init.php';
-auth_role([ROLE_ADMIN]);
-
-$devices = db_rows(
-  "SELECT gdc.*, msc.id as secret_id, msc.name as secret_name, pl.nama as nama_pelanggan
-   FROM genieacs_devices_cache gdc
-   LEFT JOIN mikrotik_secrets_cache msc ON msc.genieacs_device_id = gdc.id
-   LEFT JOIN pelanggan pl ON pl.mikrotik_secrets_id = msc.id
-   ORDER BY gdc.tag ASC, gdc.device_id ASC"
-);
+auth_role([ROLE_ADMIN, ROLE_TEKNISI]);
 
 $secrets = db_rows(
-  "SELECT msc.id, msc.name, msc.genieacs_device_id, pl.nama as nama_pelanggan
-   FROM mikrotik_secrets_cache msc
-   LEFT JOIN pelanggan pl ON pl.mikrotik_secrets_id = msc.id
-   ORDER BY msc.name ASC"
+    "SELECT msc.id, msc.name, msc.genieacs_device_id, pl.nama as nama_pelanggan
+     FROM mikrotik_secrets_cache msc
+     LEFT JOIN pelanggan pl ON pl.mikrotik_secrets_id = msc.id
+     ORDER BY msc.name ASC"
 );
 
 $lastSync = db_row("SELECT MAX(synced_at) as t FROM genieacs_devices_cache")['t'] ?? null;
@@ -48,9 +40,23 @@ ob_start();
 </p>
 
 <div class="card">
-  <div class="card-body p-0">
+  <div class="card-body p-2">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap" style="gap:8px">
+      <div class="d-flex align-items-center" style="gap:6px">
+        <label class="mb-0 text-muted" style="font-size:13px">Tampilkan</label>
+        <select id="lengthDevice" class="form-control form-control-sm" style="width:70px">
+          <option value="15">15</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+        <label class="mb-0 text-muted" style="font-size:13px">entri</label>
+      </div>
+      <input type="text" id="searchDevice" class="form-control form-control-sm"
+             placeholder="Cari tag, model, pelanggan…" style="max-width:260px">
+    </div>
     <div class="table-responsive">
-      <table class="table table-hover mb-0">
+      <table id="tabelDevice" class="table table-hover mb-0 w-100">
         <thead>
           <tr>
             <th>#</th>
@@ -60,36 +66,7 @@ ob_start();
             <th>Mapping</th>
           </tr>
         </thead>
-        <tbody>
-          <?php if (!$devices): ?>
-            <tr><td colspan="5" class="text-center text-muted py-4">Belum ada data. Klik "Sync dari ACS" dulu.</td></tr>
-          <?php endif; ?>
-          <?php foreach ($devices as $i => $d): ?>
-            <tr>
-              <td><?= $i + 1 ?></td>
-              <td><?= clean($d['tag'] ?? '—') ?></td>
-              <td class="text-muted"><?= clean(trim(($d['manufacturer'] ?? '') . ' ' . ($d['product_class'] ?? '')) ?: '—') ?></td>
-              <td class="text-muted"><?= $d['last_inform'] ? tgl_indo($d['last_inform'], true) : '—' ?></td>
-              <td>
-                <?php if ($d['secret_id']): ?>
-                  <div class="font-weight-bold" style="font-size:13px"><?= clean($d['nama_pelanggan'] ?? '—') ?></div>
-                  <div class="text-muted" style="font-size:12px">secret: <?= clean($d['secret_name']) ?></div>
-                  <button type="button" class="btn btn-outline-secondary btn-xs mt-1 btn-mapping"
-                    data-device-id="<?= (int)$d['id'] ?>" data-tag="<?= clean($d['tag'] ?? '—') ?>"
-                    data-model="<?= clean(trim(($d['manufacturer'] ?? '') . ' ' . ($d['product_class'] ?? ''))) ?>"
-                    data-pppoe="<?= clean($d['pppoe_username'] ?? '') ?>"
-                    data-secret-id="<?= (int)$d['secret_id'] ?>">Ubah Mapping</button>
-                <?php else: ?>
-                  <button type="button" class="btn btn-outline-info btn-xs btn-mapping"
-                    data-device-id="<?= (int)$d['id'] ?>" data-tag="<?= clean($d['tag'] ?? '—') ?>"
-                    data-model="<?= clean(trim(($d['manufacturer'] ?? '') . ' ' . ($d['product_class'] ?? ''))) ?>"
-                    data-pppoe="<?= clean($d['pppoe_username'] ?? '') ?>"
-                    data-secret-id=""><i class="fas fa-link mr-1"></i>Mapping ke...</button>
-                <?php endif; ?>
-              </td>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
+        <tbody></tbody>
       </table>
     </div>
   </div>
@@ -137,14 +114,51 @@ ob_start();
 $content      = ob_get_clean();
 $base_url     = BASE_URL;
 $secrets_json = json_encode(array_map(fn($s) => [
-  'id'           => $s['id'],
-  'name'         => $s['name'],
-  'nama_pelanggan' => $s['nama_pelanggan'],
-  'genieacs_device_id' => $s['genieacs_device_id'],
+    'id'                 => $s['id'],
+    'name'               => $s['name'],
+    'nama_pelanggan'     => $s['nama_pelanggan'],
+    'genieacs_device_id' => $s['genieacs_device_id'],
 ], $secrets));
 
 $extra_js = <<<HTML
 <script>
+var tabelDevice = \$('#tabelDevice').DataTable({
+  serverSide: true,
+  processing: true,
+  searching: true,
+  dom: 'rt<"d-flex justify-content-between align-items-center mt-2 flex-wrap"ip>',
+  pageLength: 15,
+  order: [[1, 'asc']],
+  language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json' },
+  ajax: {
+    url: '{$base_url}modules/acs/act.php',
+    data: function (d) {
+      d.action = 'datatable_devices';
+    }
+  },
+  columns: [
+    { data: 'no',          orderable: false },
+    { data: 'tag' },
+    { data: 'model',       orderable: false },
+    { data: 'last_inform', orderable: false },
+    { data: 'mapping',     orderable: false },
+  ]
+});
+
+\$('#lengthDevice').on('change', function () {
+  tabelDevice.page.len(parseInt(\$(this).val())).draw();
+});
+
+var searchTimer;
+\$('#searchDevice').on('keyup', function () {
+  clearTimeout(searchTimer);
+  var q = \$(this).val();
+  searchTimer = setTimeout(function () {
+    tabelDevice.search(q).draw();
+  }, 300);
+});
+
+// ── Modal Mapping ──────────────────────────────────────────────
 \$('#mapping_secret_id').select2({
   theme: 'bootstrap',
   dropdownParent: \$('#modalMapping'),
@@ -155,11 +169,11 @@ $extra_js = <<<HTML
 var secretOptions = {$secrets_json};
 
 \$(document).on('click', '.btn-mapping', function () {
-  var deviceId         = \$(this).data('device-id');
-  var tag              = \$(this).data('tag');
-  var model            = \$(this).data('model');
-  var pppoeUsername    = \$(this).data('pppoe');
-  var currentSecretId  = \$(this).data('secret-id');
+  var deviceId        = \$(this).data('device-id');
+  var tag             = \$(this).data('tag');
+  var model           = \$(this).data('model');
+  var pppoeUsername   = \$(this).data('pppoe');
+  var currentSecretId = \$(this).data('secret-id');
 
   \$('#mapping_device_id').val(deviceId);
   \$('#mapping_tag').text(tag);
@@ -169,12 +183,12 @@ var secretOptions = {$secrets_json};
   \$select.find('option:not(:first)').remove();
 
   \$.each(secretOptions, function (i, s) {
-    var isMine   = s.id == currentSecretId;
-    var isUsed   = s.genieacs_device_id && s.genieacs_device_id != deviceId && !isMine;
-    var isMatch  = pppoeUsername && s.name === pppoeUsername;
-    var label    = s.name + (s.nama_pelanggan ? ' — ' + s.nama_pelanggan : '');
+    var isMine  = s.id == currentSecretId;
+    var isUsed  = s.genieacs_device_id && s.genieacs_device_id != deviceId && !isMine;
+    var isMatch = pppoeUsername && s.name === pppoeUsername;
+    var label   = s.name + (s.nama_pelanggan ? ' — ' + s.nama_pelanggan : '');
     if (isMatch) label += ' ✓ username cocok';
-    if (isUsed) label += ' (sudah dipakai device lain)';
+    if (isUsed)  label += ' (sudah dipakai device lain)';
     var \$opt = \$('<option></option>').val(s.id).text(label);
     if (isUsed) \$opt.prop('disabled', true);
     \$select.append(\$opt);

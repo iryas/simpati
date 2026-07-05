@@ -400,6 +400,33 @@ body.sidebar-collapsed .nav-item a { justify-content: center; padding: 12px; }
 body.sidebar-collapsed .btn-logout { justify-content: center; }
 body.sidebar-collapsed #content-wrapper { margin-left: 68px; }
 
+/* ── DataTables ─────────────────────────────────────────────── */
+.dataTables_info { font-size: 13px; color: #64748b; }
+
+.dataTables_paginate .pagination {
+  gap: 0 !important;
+  flex-wrap: nowrap;
+  margin: 0;
+}
+
+.dataTables_paginate .page-item { margin: 0 !important; }
+
+.dataTables_paginate .page-link {
+  font-size: 13px;
+  padding: 4px 9px;
+  color: #2563eb;
+}
+
+.dataTables_paginate .page-item.active .page-link {
+  background-color: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.dataTables_paginate .page-item.disabled .page-link {
+  color: #94a3b8;
+}
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
   #sidebar { left: calc(-1 * var(--sidebar-width)); }

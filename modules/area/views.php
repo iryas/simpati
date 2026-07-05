@@ -3,7 +3,7 @@
 //  KAHFINET - Modul Data Area (Tampilan)
 // ============================================================
 require_once __DIR__ . '/../../system/init.php';
-auth_check();
+auth_role([ROLE_ADMIN]);
 
 $page_title  = 'Data Area';
 $active_menu = 'area';

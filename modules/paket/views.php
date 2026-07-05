@@ -3,7 +3,7 @@
 //  KAHFINET - Modul Paket Internet (Tampilan)
 // ============================================================
 require_once __DIR__ . '/../../system/init.php';
-auth_check();
+auth_role([ROLE_ADMIN]);
 
 $rows = db_rows("SELECT * FROM paket ORDER BY harga ASC");
 

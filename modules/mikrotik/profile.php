@@ -4,7 +4,7 @@
 //  Mirror read-only dari /ppp/profile di Mikrotik.
 // ============================================================
 require_once __DIR__ . '/../../system/init.php';
-auth_role([ROLE_ADMIN]);
+auth_role([ROLE_ADMIN, ROLE_TEKNISI]);
 
 $rows      = db_rows("SELECT * FROM mikrotik_profiles_cache ORDER BY name ASC");
 $lastSync  = db_row("SELECT MAX(synced_at) as t FROM mikrotik_profiles_cache")['t'] ?? null;

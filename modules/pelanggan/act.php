@@ -57,7 +57,7 @@ switch ($action) {
             $params
         );
 
-        $canChange = in_array(current_user()['role'], [ROLE_ADMIN, ROLE_TEKNISI]);
+        $canChange = current_user()['role'] === ROLE_ADMIN;
         $data = [];
 
         foreach ($rows as $i => $r) {
@@ -95,7 +95,7 @@ switch ($action) {
 
     // ── UPDATE STATUS (form sederhana, dari halaman Status Pelanggan) ──
     case 'update_status':
-        auth_role([ROLE_ADMIN, ROLE_TEKNISI]);
+        auth_role([ROLE_ADMIN]);
         $statusBackUrl = BASE_URL . 'modules/pelanggan/status.php';
         if (!csrf_verify()) { flash('danger', 'Token tidak valid.'); redirect($statusBackUrl); }
 
@@ -266,7 +266,7 @@ switch ($action) {
             $params
         );
 
-        $canEdit   = in_array(current_user()['role'], [ROLE_ADMIN, ROLE_TEKNISI]);
+        $canEdit   = current_user()['role'] === ROLE_ADMIN;
         $canDelete = current_user()['role'] === ROLE_ADMIN;
         $data = [];
 
@@ -368,7 +368,7 @@ switch ($action) {
 
     // ── GET JSON (untuk modal edit) ───────────────────────────
     case 'get_json':
-        auth_role([ROLE_ADMIN, ROLE_TEKNISI]);
+        auth_role([ROLE_ADMIN]);
         $id  = (int)get('id');
         $row = db_row("SELECT * FROM pelanggan WHERE id = ?", [$id]);
         if (!$row) json_res(false, 'Data tidak ditemukan.');
@@ -376,7 +376,7 @@ switch ($action) {
 
     // ── CREATE ────────────────────────────────────────────────
     case 'create':
-        auth_role([ROLE_ADMIN, ROLE_TEKNISI]);
+        auth_role([ROLE_ADMIN]);
         if (!csrf_verify()) { flash('danger', 'Token tidak valid.'); redirect($back_url); }
 
         $secretId  = (int)post('mikrotik_secrets_id');
@@ -430,7 +430,7 @@ switch ($action) {
 
     // ── UPDATE ────────────────────────────────────────────────
     case 'update':
-        auth_role([ROLE_ADMIN, ROLE_TEKNISI]);
+        auth_role([ROLE_ADMIN]);
         if (!csrf_verify()) { flash('danger', 'Token tidak valid.'); redirect($back_url); }
 
         $id = (int)post('id');

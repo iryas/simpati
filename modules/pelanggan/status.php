@@ -6,7 +6,7 @@
 // ============================================================
 require_once __DIR__ . '/../../system/init.php';
 auth_check();
-auth_role([ROLE_ADMIN, ROLE_TEKNISI]);
+auth_role([ROLE_ADMIN]);
 
 $pelanggans = db_rows(
   "SELECT pl.id, pl.nama, pl.no_hp, pl.status, pl.paket_id, ar.nama as nama_area

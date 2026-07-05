@@ -3,7 +3,7 @@
 //  KAHFINET - Modul ACS / Pengaturan Koneksi (Tampilan)
 // ============================================================
 require_once __DIR__ . '/../../system/init.php';
-auth_role([ROLE_ADMIN]);
+auth_role([ROLE_ADMIN, ROLE_TEKNISI]);
 
 $acs = db_row("SELECT * FROM acs_settings WHERE is_active = 1 ORDER BY id LIMIT 1");
 
