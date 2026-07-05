@@ -1,0 +1,14 @@
+# ── Konfigurasi lokal (berisi kredensial, berbeda tiap server) ──
+system/config.php
+
+# ── Log error ────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── OS & Editor ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
