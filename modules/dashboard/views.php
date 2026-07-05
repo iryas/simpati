@@ -188,13 +188,13 @@ ob_start();
         <ul class="nav nav-tabs" id="tabPembayaran" role="tablist" style="border-bottom:1px solid #dee2e6">
           <li class="nav-item">
             <a class="nav-link active" data-toggle="tab" href="#tab-terbaru" role="tab">
-              Terbaru
+              <i class="fas fa-clock mr-1" style="font-size:12px"></i>Terbaru
               <span class="badge badge-success ml-1"><?= $terbaru_count ?></span>
             </a>
           </li>
           <li class="nav-item">
             <a class="nav-link" data-toggle="tab" href="#tab-belum" role="tab">
-              Belum Lunas
+              <i class="fas fa-hourglass-half mr-1" style="font-size:12px"></i>Belum Lunas
               <?php if ($belum_count > 0): ?>
                 <span class="badge badge-danger ml-1"><?= $belum_count ?></span>
               <?php endif; ?>
@@ -202,7 +202,7 @@ ob_start();
           </li>
           <li class="nav-item">
             <a class="nav-link" data-toggle="tab" href="#tab-tunggakan" role="tab">
-              Tunggakan
+              <i class="fas fa-fire mr-1" style="font-size:12px;color:#f59e0b"></i>Tunggakan
               <?php if ($tunggakan_count2 > 0): ?>
                 <span class="badge badge-warning ml-1"><?= $tunggakan_count2 ?></span>
               <?php endif; ?>

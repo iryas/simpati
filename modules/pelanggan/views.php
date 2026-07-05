@@ -449,9 +449,9 @@ $(document).on('click', '.btn-detail-pelanggan', function () {
 
     $('#detailBody').html(
       '<ul class="nav nav-tabs" id="detailTabs" role="tablist">' +
-        '<li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#tabInfo">Info Pelanggan</a></li>' +
-        '<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tabRiwayat">Riwayat Pembayaran</a></li>' +
-        '<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tabStatusLog">Riwayat Aktivitas</a></li>' +
+        '<li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#tabInfo"><i class="fas fa-user mr-1" style="font-size:12px"></i>Info Pelanggan</a></li>' +
+        '<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tabRiwayat"><i class="fas fa-receipt mr-1" style="font-size:12px"></i>Riwayat Pembayaran</a></li>' +
+        '<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tabStatusLog"><i class="fas fa-history mr-1" style="font-size:12px"></i>Riwayat Aktivitas</a></li>' +
       '</ul>' +
       '<div class="tab-content pt-3">' +
         '<div class="tab-pane fade show active" id="tabInfo">' +
