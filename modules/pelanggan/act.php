@@ -368,7 +368,7 @@ switch ($action) {
 
     // ── GET JSON (untuk modal edit) ───────────────────────────
     case 'get_json':
-        auth_role([ROLE_ADMIN]);
+        auth_role([ROLE_ADMIN, ROLE_KEUANGAN]);
         $id  = (int)get('id');
         $row = db_row("SELECT * FROM pelanggan WHERE id = ?", [$id]);
         if (!$row) json_res(false, 'Data tidak ditemukan.');
@@ -430,7 +430,7 @@ switch ($action) {
 
     // ── UPDATE ────────────────────────────────────────────────
     case 'update':
-        auth_role([ROLE_ADMIN]);
+        auth_role([ROLE_ADMIN, ROLE_KEUANGAN]);
         if (!csrf_verify()) { flash('danger', 'Token tidak valid.'); redirect($back_url); }
 
         $id = (int)post('id');
