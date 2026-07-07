@@ -4,7 +4,7 @@
 // ============================================================
 require_once __DIR__ . '/../../system/init.php';
 auth_check();
-auth_role([ROLE_ADMIN, ROLE_KASIR]);
+auth_role([ROLE_ADMIN, ROLE_KEUANGAN]);
 
 $action = get('action') ?: post('action');
 
@@ -196,7 +196,7 @@ switch ($action) {
         $petugasId = null;
         if ($status === 'lunas') {
             $petugasId = (int)post('kasir_id') ?: current_user()['id'];
-            $petugas   = db_row("SELECT id FROM pengguna WHERE id = ? AND role IN ('admin','kasir')", [$petugasId]);
+            $petugas   = db_row("SELECT id FROM pengguna WHERE id = ? AND role IN ('admin','keuangan')", [$petugasId]);
             if (!$petugas) {
                 flash('danger', 'Petugas/kasir tidak valid.');
                 redirect($back_url);
@@ -373,7 +373,7 @@ switch ($action) {
         }
 
         $petugasId = (int)post('kasir_id');
-        $petugas   = db_row("SELECT id FROM pengguna WHERE id = ? AND role IN ('admin','kasir')", [$petugasId]);
+        $petugas   = db_row("SELECT id FROM pengguna WHERE id = ? AND role IN ('admin','keuangan')", [$petugasId]);
         if (!$petugas) {
             flash('danger', 'Petugas/kasir tidak valid.');
             redirect($back_url);
@@ -431,7 +431,7 @@ switch ($action) {
         }
 
         $petugasId = (int)post('kasir_id');
-        $petugas   = db_row("SELECT id FROM pengguna WHERE id = ? AND role IN ('admin','kasir')", [$petugasId]);
+        $petugas   = db_row("SELECT id FROM pengguna WHERE id = ? AND role IN ('admin','keuangan')", [$petugasId]);
         if (!$petugas) {
             flash('danger', 'Petugas/kasir tidak valid.');
             redirect($back_url);
@@ -486,7 +486,7 @@ switch ($action) {
         }
 
         $petugasId = (int)post('kasir_id');
-        $petugas   = db_row("SELECT id FROM pengguna WHERE id = ? AND role IN ('admin','kasir')", [$petugasId]);
+        $petugas   = db_row("SELECT id FROM pengguna WHERE id = ? AND role IN ('admin','keuangan')", [$petugasId]);
         if (!$petugas) {
             flash('danger', 'Petugas/kasir tidak valid.');
             redirect($back_url);

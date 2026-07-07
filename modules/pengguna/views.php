@@ -104,7 +104,7 @@ ob_start();
             <select name="role" class="form-control">
               <option value="admin">Admin</option>
               <option value="teknisi">Teknisi</option>
-              <option value="kasir" selected>Kasir</option>
+              <option value="keuangan" selected>Keuangan</option>
             </select>
           </div>
           <div class="form-group">
@@ -193,7 +193,7 @@ $(document).on('click', '.btn-edit-user', function () {
         '<select name="role" class="form-control">' +
           '<option value="admin"'   + (d.role === 'admin'   ? ' selected' : '') + '>Admin</option>' +
           '<option value="teknisi"' + (d.role === 'teknisi' ? ' selected' : '') + '>Teknisi</option>' +
-          '<option value="kasir"'   + (d.role === 'kasir'   ? ' selected' : '') + '>Kasir</option>' +
+          '<option value="keuangan"' + (d.role === 'keuangan' ? ' selected' : '') + '>Keuangan</option>' +
         '</select>' +
       '</div>' +
       '<div class="form-group">' +

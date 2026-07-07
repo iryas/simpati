@@ -28,6 +28,10 @@ $changelog = [
                 'Bug jam pembayaran selalu tampil 00:00 di bukti WA — kolom tgl_bayar diubah dari DATE ke DATETIME (Migrasi 004)',
                 'Nomor HP pelanggan diformat otomatis ke format 62xxx sebelum dikirim ke Wablas',
             ],
+            'Perubahan' => [
+                'Role "Kasir" diubah menjadi "Keuangan" di seluruh sistem — konstanta, label, query, dan data DB (Migrasi 006)',
+                'ENUM kolom role di tabel pengguna diperbarui: admin, teknisi, keuangan',
+            ],
         ],
     ],
     [

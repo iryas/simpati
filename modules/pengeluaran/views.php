@@ -4,7 +4,7 @@
 // ============================================================
 require_once __DIR__ . '/../../system/init.php';
 auth_check();
-auth_role([ROLE_ADMIN, ROLE_KASIR]);
+auth_role([ROLE_ADMIN, ROLE_KEUANGAN]);
 
 $bulan    = get('bulan', date('Y-m'));
 $kategori = get('kategori');

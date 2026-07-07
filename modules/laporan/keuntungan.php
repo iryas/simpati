@@ -6,7 +6,7 @@
 // ============================================================
 require_once __DIR__ . '/../../system/init.php';
 auth_check();
-auth_role([ROLE_ADMIN, ROLE_KASIR]);
+auth_role([ROLE_ADMIN, ROLE_KEUANGAN]);
 
 $tahun = (int)get('tahun', date('Y'));
 $bulan = get('bulan', date('Y-m'));

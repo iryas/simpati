@@ -32,7 +32,7 @@ switch ($action) {
         $password = post('password');
         $role     = post('role');
 
-        if (!in_array($role, [ROLE_ADMIN, ROLE_TEKNISI, ROLE_KASIR], true)) {
+        if (!in_array($role, [ROLE_ADMIN, ROLE_TEKNISI, ROLE_KEUANGAN], true)) {
             flash('danger', 'Role tidak valid.'); redirect($back_url);
         }
 
@@ -58,7 +58,7 @@ switch ($action) {
         $role     = post('role');
 
         if (!$id) { flash('danger', 'ID tidak valid.'); redirect($back_url); }
-        if (!in_array($role, [ROLE_ADMIN, ROLE_TEKNISI, ROLE_KASIR], true)) {
+        if (!in_array($role, [ROLE_ADMIN, ROLE_TEKNISI, ROLE_KEUANGAN], true)) {
             flash('danger', 'Role tidak valid.'); redirect($back_url);
         }
 

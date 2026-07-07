@@ -4,14 +4,14 @@
 // ============================================================
 require_once __DIR__ . '/../../system/init.php';
 auth_check();
-auth_role([ROLE_ADMIN, ROLE_KASIR]);
+auth_role([ROLE_ADMIN, ROLE_KEUANGAN]);
 
 $search = get('search');
 $status = get('status');
 $bulan  = get('bulan', date('Y-m'));
 
 $pelanggans = db_rows("SELECT id, nama, no_hp, paket_id FROM pelanggan WHERE status='aktif' ORDER BY nama");
-$petugas    = db_rows("SELECT id, nama FROM pengguna WHERE role IN ('admin','kasir') AND status='aktif' ORDER BY nama");
+$petugas    = db_rows("SELECT id, nama FROM pengguna WHERE role IN ('admin','keuangan') AND status='aktif' ORDER BY nama");
 
 // ── Setting tagihan ───────────────────────────────────────────
 $tgl_mulai      = (int)app_setting('tgl_mulai_tagihan', '1');

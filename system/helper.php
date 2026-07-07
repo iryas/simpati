@@ -107,7 +107,7 @@ function badge_role(string $role): string {
     $map = [
         'admin'   => 'danger',
         'teknisi' => 'primary',
-        'kasir'   => 'success',
+        'keuangan' => 'success',
     ];
     $color = $map[$role] ?? 'secondary';
     return '<span class="badge badge-' . $color . '">' . clean(ucfirst($role)) . '</span>';

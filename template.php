@@ -96,7 +96,7 @@ $user = current_user();
         </li>
       <?php endif; ?>
 
-      <?php if (in_array($user['role'], [ROLE_ADMIN, ROLE_KASIR])): ?>
+      <?php if (in_array($user['role'], [ROLE_ADMIN, ROLE_KEUANGAN])): ?>
         <li class="nav-label">KEUANGAN</li>
         <li class="nav-item <?= ($active_menu ?? '') === 'pembayaran' ? 'active' : '' ?>">
           <a href="<?= BASE_URL ?>modules/pembayaran/views.php">

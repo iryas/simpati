@@ -49,7 +49,7 @@ define('PPPOE_ENCRYPT_KEY', 'GANTI_DENGAN_32_KARAKTER_ACAK___');
 // ── Role ─────────────────────────────────────────────────────
 define('ROLE_ADMIN',    'admin');
 define('ROLE_TEKNISI',  'teknisi');
-define('ROLE_KASIR',    'kasir');
+define('ROLE_KEUANGAN', 'keuangan');
 
 // ── Timezone ─────────────────────────────────────────────────
 date_default_timezone_set('Asia/Jayapura'); // Sesuaikan timezone

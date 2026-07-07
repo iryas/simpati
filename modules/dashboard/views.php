@@ -143,7 +143,7 @@ ob_start();
       </div>
     </div>
   </div>
-  <?php if (in_array(current_user()['role'], [ROLE_ADMIN, ROLE_KASIR])): ?>
+  <?php if (in_array(current_user()['role'], [ROLE_ADMIN, ROLE_KEUANGAN])): ?>
   <div class="col-md-4 col-sm-6 mb-3">
     <div class="stat-card bg-purple-grad">
       <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
@@ -168,7 +168,7 @@ ob_start();
 <!-- Row: Recent Payments + New Customers -->
 <div class="row">
   <!-- Pembayaran Bulan Ini (tab) -->
-  <?php if (in_array(current_user()['role'], [ROLE_ADMIN, ROLE_KASIR])): ?>
+  <?php if (in_array(current_user()['role'], [ROLE_ADMIN, ROLE_KEUANGAN])): ?>
   <?php
     $terbaru_count    = count($recent_payments);
     $belum_count      = count($belum_payments);
@@ -367,7 +367,7 @@ ob_start();
   <?php endif; ?>
 
   <!-- Pelanggan Baru -->
-  <div class="col-lg-<?= in_array(current_user()['role'], [ROLE_ADMIN, ROLE_KASIR]) ? '4' : '6' ?> mb-4">
+  <div class="col-lg-<?= in_array(current_user()['role'], [ROLE_ADMIN, ROLE_KEUANGAN]) ? '4' : '6' ?> mb-4">
     <div class="card h-100">
       <div class="card-header">
         <span><i class="fas fa-user-plus mr-2 text-success"></i>Pelanggan Terbaru</span>
