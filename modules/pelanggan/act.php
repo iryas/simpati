@@ -266,7 +266,7 @@ switch ($action) {
             $params
         );
 
-        $canEdit   = current_user()['role'] === ROLE_ADMIN;
+        $canEdit   = in_array(current_user()['role'], [ROLE_ADMIN, ROLE_KEUANGAN]);
         $canDelete = current_user()['role'] === ROLE_ADMIN;
         $data = [];
 
