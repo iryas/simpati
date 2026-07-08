@@ -52,6 +52,13 @@ if (!function_exists('get_menu')) {
                 'key'    => 'pengguna',
                 'roles'  => ['admin'],
             ],
+            [
+                'label'  => 'Template WA',
+                'url'    => $base . 'modules/template_wa/views.php',
+                'icon'   => 'fab fa-whatsapp',
+                'key'    => 'template_wa',
+                'roles'  => ['admin'],
+            ],
         ];
 
         return array_filter($menu, fn($m) => in_array($role, $m['roles'], true));

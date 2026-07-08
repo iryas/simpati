@@ -212,6 +212,26 @@ function format_no_hp_wa(string $no_hp): string {
     return $no;
 }
 
+// ── WA Template: ambil konten dari DB ────────────────────────
+function wa_template(string $kode): string {
+    static $cache = [];
+    if (!array_key_exists($kode, $cache)) {
+        $row = db_row("SELECT konten FROM wa_templates WHERE kode = ? AND aktif = 1", [$kode]);
+        $cache[$kode] = $row ? $row['konten'] : '';
+    }
+    return $cache[$kode];
+}
+
+// ── WA Template: render dengan replace placeholder {key} ─────
+function wa_render(string $kode, array $vars): string {
+    $tpl = wa_template($kode);
+    if (!$tpl) return '';
+    foreach ($vars as $k => $v) {
+        $tpl = str_replace('{' . $k . '}', (string)$v, $tpl);
+    }
+    return $tpl;
+}
+
 // ── Format Teks Pesan Bukti Pembayaran untuk WA ───────────────
 // $row harus mengandung: id, jumlah, potongan, terbayar, tgl_bayar,
 //   bulan_tagihan, nama_pelanggan, no_hp, nama_paket
@@ -237,16 +257,13 @@ function format_pesan_bukti_bayar(array $row): string {
         ? '- ' . rupiah($nominal_pot) . ' (' . $potongan . 'h)'
         : rupiah(0) . ' (tidak ada potongan)';
 
-    $paket = trim($row['nama_paket'] ?? '-');
-
-    // Di dalam code block (```) WA pakai monospace → label kiri, nilai rata kanan
+    $paket     = trim($row['nama_paket'] ?? '-');
     $sep_tebal = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
     $sep_tipis = "──────────────────────────────";
-    $lw = 30; // lebar total baris dalam code block
+    $lw        = 30;
 
-    // Baris: label kiri (10 char) + " : " + nilai rata kanan
     $baris = function(string $label, string $nilai) use ($lw): string {
-        $prefix = str_pad($label, 10) . ' : ';          // 14 char
+        $prefix = str_pad($label, 10) . ' : ';
         $sisa   = $lw - mb_strlen($prefix);
         $val    = mb_strlen($nilai) <= $sisa
                     ? str_pad($nilai, $sisa, ' ', STR_PAD_LEFT)
@@ -254,27 +271,51 @@ function format_pesan_bukti_bayar(array $row): string {
         return $prefix . $val . "\n";
     };
 
-    $msg  = "*BUKTI PEMBAYARAN IURAN*\n";
-    $msg .= "*{$nama_isp}*\n";
-    $msg .= "```\n";
-    $msg .= $sep_tebal . "\n";
-    $msg .= $baris('No. Bayar',  $no_bayar);
-    $msg .= $baris('Tgl. Bayar', $tgl_bayar);
-    $msg .= $sep_tipis . "\n";
-    $msg .= $baris('Pelanggan',  $row['nama_pelanggan']);
-    $msg .= $baris('Paket',      $paket);
-    if ($periode) $msg .= $baris('Periode', $periode);
-    $msg .= $sep_tipis . "\n";
-    $msg .= $baris('Tagihan',  rupiah($jumlah));
-    $msg .= $baris('Potongan', $pot_text);
-    $msg .= $sep_tebal . "\n";
-    $msg .= str_pad('TOTAL BAYAR', 10) . ' : ' . str_pad(rupiah($terbayar), 16, ' ', STR_PAD_LEFT) . "\n";
-    $msg .= $sep_tebal . "\n";
-    $msg .= "```\n";
-    $msg .= "Terima kasih sudah membayar! 🙏\n";
-    $msg .= "_SIMPATI · Powered by {$nama_isp}_";
+    // Bangun blok struk monospace
+    $struk  = "```\n";
+    $struk .= $sep_tebal . "\n";
+    $struk .= $baris('No. Bayar',  $no_bayar);
+    $struk .= $baris('Tgl. Bayar', $tgl_bayar);
+    $struk .= $sep_tipis . "\n";
+    $struk .= $baris('Pelanggan',  $row['nama_pelanggan']);
+    $struk .= $baris('Paket',      $paket);
+    if ($periode) $struk .= $baris('Periode', $periode);
+    $struk .= $sep_tipis . "\n";
+    $struk .= $baris('Tagihan',  rupiah($jumlah));
+    $struk .= $baris('Potongan', $pot_text);
+    $struk .= $sep_tebal . "\n";
+    $struk .= str_pad('TOTAL BAYAR', 10) . ' : ' . str_pad(rupiah($terbayar), 16, ' ', STR_PAD_LEFT) . "\n";
+    $struk .= $sep_tebal . "\n";
+    $struk .= "```";
 
-    return $msg;
+    $result = wa_render('bukti_bayar', ['nama_isp' => $nama_isp, 'struk' => $struk]);
+
+    // Fallback jika template belum ada di DB
+    if (!$result) {
+        $result  = "*BUKTI PEMBAYARAN IURAN*\n*{$nama_isp}*\n{$struk}\n";
+        $result .= "Terima kasih sudah membayar! 🙏\n_SIMPATI · Powered by {$nama_isp}_";
+    }
+
+    return $result;
+}
+
+// ── Format Teks Pesan Pemberitahuan Isolir untuk WA ──────────
+// $row harus mengandung: nama, no_hp, nama_paket, bulan_tagihan, jumlah
+function format_pesan_isolir(array $row): string {
+    $nama_isp = app_setting('nama_isp', 'KahfiNet');
+    $bln_indo = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    $periode  = '';
+    if (!empty($row['bulan_tagihan'])) {
+        $ts      = strtotime($row['bulan_tagihan'] . '-01');
+        $periode = $bln_indo[(int)date('n', $ts)] . ' ' . date('Y', $ts);
+    }
+    return wa_render('isolir', [
+        'nama_isp' => $nama_isp,
+        'nama'     => $row['nama'] ?? '-',
+        'paket'    => $row['nama_paket'] ?? '-',
+        'periode'  => $periode ?: date('Y-m'),
+        'jumlah'   => rupiah((int)($row['jumlah'] ?? 0)),
+    ]);
 }
 
 // ── Kirim WA via Wablas ───────────────────────────────────────

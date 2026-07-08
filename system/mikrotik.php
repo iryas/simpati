@@ -155,6 +155,14 @@ function mikrotik_sync_profiles(): array
     return ['ok' => true, 'msg' => "Berhasil sync $count PPP profile dari Mikrotik."];
 }
 
+function mikrotik_is_online(): bool
+{
+    $api = mikrotik_client();
+    if (!$api) return false;
+    try { $api->close(); } catch (Throwable) {}
+    return true;
+}
+
 function mikrotik_sync_secrets(): array
 {
     $rows = mikrotik_fetch_secrets();

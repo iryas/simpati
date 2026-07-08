@@ -29,7 +29,29 @@ $tunggakan_count = db_row(
 )['n'] ?? 0;
 
 // ── Label periode bulan ini ───────────────────────────────────
-$label_periode_dashboard = label_periode_tagihan($bulan_ini, (int)app_setting('tgl_mulai_tagihan', '1'));
+$tgl_mulai_set = (int)app_setting('tgl_mulai_tagihan', '1');
+$grace_period  = (int)app_setting('grace_period_isolir', '3');
+$label_periode_dashboard = label_periode_tagihan($bulan_ini, $tgl_mulai_set);
+
+// ── Kandidat isolir (pelanggan aktif belum bayar setelah grace period) ──
+$threshold_ts        = mktime(0, 0, 0, (int)date('n'), $tgl_mulai_set + $grace_period, (int)date('Y'));
+$tampil_widget_isolir = in_array(current_user()['role'], [ROLE_ADMIN, ROLE_KEUANGAN]);
+$kandidat_isolir = [];
+if ($tampil_widget_isolir) {
+    $kandidat_isolir = db_rows(
+        "SELECT pl.id, pl.nama, pl.no_hp, pk.nama as nama_paket,
+                py.jumlah, msc.ros_id as mt_ros_id, gdc.device_id as acs_device_id
+         FROM pelanggan pl
+         INNER JOIN pembayaran py ON py.pelanggan_id = pl.id
+             AND py.bulan_tagihan = ? AND py.status = 'belum'
+         LEFT JOIN paket pk ON pk.id = pl.paket_id
+         LEFT JOIN mikrotik_secrets_cache msc ON msc.id = pl.mikrotik_secrets_id
+         LEFT JOIN genieacs_devices_cache gdc ON gdc.id = msc.genieacs_device_id
+         WHERE pl.status = 'aktif'
+         ORDER BY pl.nama",
+        [$bulan_ini]
+    );
+}
 
 // ── Pembayaran terbaru (lunas bulan ini, termasuk pelunasan tunggakan) ──
 $recent_payments = db_rows(
@@ -404,6 +426,159 @@ ob_start();
     </div>
   </div>
 </div>
+
+<?php if ($tampil_widget_isolir): ?>
+<?php
+    $bln_indo_w     = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    $tgl_isolir_num = $tgl_mulai_set + $grace_period;
+    $ts_thr         = mktime(0, 0, 0, (int)date('n', $threshold_ts), $tgl_isolir_num, (int)date('Y', $threshold_ts));
+    $tgl_isolir_lbl = date('j', $ts_thr) . ' ' . $bln_indo_w[(int)date('n', $ts_thr)] . ' ' . date('Y', $ts_thr);
+    $csrf_tok       = csrf_token();
+    $is_admin       = current_user()['role'] === ROLE_ADMIN;
+?>
+<!-- Widget Kandidat Isolir -->
+<div class="row mt-2">
+  <div class="col-12 mb-4">
+    <div class="card" style="border:1px solid #ffc107">
+      <div class="card-header d-flex align-items-center justify-content-between flex-wrap"
+           style="gap:8px;background:#fff8e1;border-bottom:1px solid #ffc107">
+        <div>
+          <span class="font-weight-bold" style="color:#7c5e00">
+            <i class="fas fa-user-slash mr-2" style="color:#f59e0b"></i>Kandidat Isolir
+            <?php if ($kandidat_isolir): ?>
+              <span class="badge badge-warning ml-1"><?= count($kandidat_isolir) ?></span>
+            <?php endif; ?>
+          </span>
+          <br>
+          <small class="text-muted" style="font-size:11px">
+            Belum bayar bulan <?= $bln_indo_w[(int)date('n')] . ' ' . date('Y') ?> &bull;
+            Batas isolir: tgl <?= $tgl_isolir_lbl ?>
+            <?php if (time() >= $threshold_ts): ?>
+              &bull; <span class="text-danger font-weight-bold">Sudah lewat batas</span>
+            <?php else: ?>
+              &bull; <span class="text-success">Belum melewati batas</span>
+            <?php endif; ?>
+          </small>
+        </div>
+        <?php if ($is_admin && $kandidat_isolir): ?>
+        <button type="button" class="btn btn-warning btn-sm" id="btnIsolirSemua">
+          <i class="fas fa-user-slash mr-1"></i>Isolir Semua Terpilih
+          <span class="badge badge-light ml-1" id="countTerpilih">0</span>
+        </button>
+        <?php endif; ?>
+      </div>
+      <div class="card-body p-0">
+        <?php if ($kandidat_isolir): ?>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0" style="font-size:13px">
+            <thead>
+              <tr>
+                <?php if ($is_admin): ?>
+                <th style="width:36px;text-align:center">
+                  <input type="checkbox" id="checkAllIsolir" title="Pilih semua">
+                </th>
+                <?php endif; ?>
+                <th>Pelanggan</th>
+                <th>Paket</th>
+                <th>Tagihan</th>
+                <?php if ($is_admin): ?><th style="width:70px">Aksi</th><?php endif; ?>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($kandidat_isolir as $k): ?>
+              <tr>
+                <?php if ($is_admin): ?>
+                <td style="text-align:center">
+                  <input type="checkbox" class="check-isolir" value="<?= $k['id'] ?>">
+                </td>
+                <?php endif; ?>
+                <td>
+                  <div class="font-weight-bold"><?= clean($k['nama']) ?></div>
+                  <small class="text-muted"><?= clean($k['no_hp'] ?: '—') ?></small>
+                </td>
+                <td><?= clean($k['nama_paket'] ?? '—') ?></td>
+                <td><?= rupiah((int)$k['jumlah']) ?></td>
+                <?php if ($is_admin): ?>
+                <td>
+                  <button type="button" class="btn btn-warning btn-xs btn-isolir-satu"
+                          data-id="<?= $k['id'] ?>" data-nama="<?= clean($k['nama']) ?>">
+                    <i class="fas fa-user-slash"></i>
+                  </button>
+                </td>
+                <?php endif; ?>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <?php else: ?>
+        <div class="text-center text-muted py-4" style="font-size:13px">
+          <i class="fas fa-check-circle mr-1 text-success"></i>
+          Tidak ada pelanggan yang perlu diisolir saat ini.
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+</div>
+
+<?php if ($is_admin): ?>
+<script>
+(function () {
+  const BASE = '<?= BASE_URL ?>';
+  const CSRF = '<?= $csrf_tok ?>';
+
+  function updateCount() {
+    $('#countTerpilih').text($('.check-isolir:checked').length);
+  }
+
+  $('#checkAllIsolir').on('change', function () {
+    $('.check-isolir').prop('checked', this.checked);
+    updateCount();
+  });
+  $(document).on('change', '.check-isolir', updateCount);
+
+  function doIsolir(ids) {
+    const isMassal = ids.length > 1;
+    const data = isMassal
+      ? { action: 'isolir_massal', ids: ids, _csrf: CSRF }
+      : { action: 'isolir', id: ids[0], _csrf: CSRF };
+
+    $.ajax({
+      url: BASE + 'modules/pelanggan/act.php',
+      method: 'POST',
+      data: data,
+      success: function (res) {
+        if (res.success) {
+          toastr.success(res.message);
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          toastr.error(res.message);
+        }
+      },
+      error: function () { toastr.error('Terjadi kesalahan jaringan.'); }
+    });
+  }
+
+  $('#btnIsolirSemua').on('click', function () {
+    const ids = $('.check-isolir:checked').map(function () {
+      return parseInt($(this).val());
+    }).get();
+    if (!ids.length) { toastr.warning('Pilih minimal satu pelanggan.'); return; }
+    if (!confirm('Isolir ' + ids.length + ' pelanggan terpilih?\nPastikan Mikrotik dan ACS online.')) return;
+    doIsolir(ids);
+  });
+
+  $(document).on('click', '.btn-isolir-satu', function () {
+    const id   = parseInt($(this).data('id'));
+    const nama = $(this).data('nama');
+    if (!confirm('Isolir pelanggan "' + nama + '"?\nPastikan Mikrotik dan ACS online.')) return;
+    doIsolir([id]);
+  });
+})();
+</script>
+<?php endif; ?>
+<?php endif; ?>
 
 <?php
 $content = ob_get_clean();

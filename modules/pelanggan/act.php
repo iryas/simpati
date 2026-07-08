@@ -366,6 +366,109 @@ switch ($action) {
             json_res(false, 'Gagal kirim perintah reboot. Cek koneksi ke ACS.');
         }
 
+    // ── ISOLIR SATU PELANGGAN ────────────────────────────────
+    case 'isolir':
+        auth_role([ROLE_ADMIN]);
+        if (!csrf_verify()) json_res(false, 'Token tidak valid.');
+
+        $id  = (int)post('id');
+        if (!$id) json_res(false, 'ID tidak valid.');
+
+        $row = db_row(
+            "SELECT pl.id, pl.nama, pl.no_hp, pl.status,
+                    pk.nama as nama_paket,
+                    py.bulan_tagihan, py.jumlah,
+                    msc.ros_id as mt_ros_id, gdc.device_id as acs_device_id
+             FROM pelanggan pl
+             LEFT JOIN paket pk ON pk.id = pl.paket_id
+             LEFT JOIN pembayaran py ON py.pelanggan_id = pl.id
+                 AND py.status = 'belum' AND py.bulan_tagihan = DATE_FORMAT(NOW(),'%Y-%m')
+             LEFT JOIN mikrotik_secrets_cache msc ON msc.id = pl.mikrotik_secrets_id
+             LEFT JOIN genieacs_devices_cache gdc ON gdc.id = msc.genieacs_device_id
+             WHERE pl.id = ?",
+            [$id]
+        );
+        if (!$row) json_res(false, 'Pelanggan tidak ditemukan.');
+        if ($row['status'] === 'isolir') json_res(false, 'Pelanggan sudah berstatus isolir.');
+
+        if (!mikrotik_is_online()) json_res(false, 'Mikrotik tidak dapat dijangkau. Pastikan router online sebelum isolir.');
+        $acs_cek = acs_test_connection();
+        if (!$acs_cek['ok']) json_res(false, 'ACS tidak dapat dijangkau. Pastikan ACS online sebelum isolir.');
+
+        db_update('pelanggan', ['status' => 'isolir'], 'id = ?', [$id]);
+        db_insert('pelanggan_status_log', [
+            'pelanggan_id' => $id,
+            'tipe'         => 'status',
+            'details'      => json_encode(['lama' => $row['status'], 'baru' => 'isolir']),
+            'diubah_oleh'  => current_user()['id'],
+            'created_at'   => date('Y-m-d H:i:s'),
+        ]);
+        if ($row['mt_ros_id']) {
+            mikrotik_secret_push_profile($row['mt_ros_id'], 'profile-Isolir', false);
+        }
+        if ($row['acs_device_id']) {
+            acs_reboot_device($row['acs_device_id']);
+        }
+        if (!empty($row['no_hp'])) {
+            $pesan_isolir = format_pesan_isolir($row);
+            if ($pesan_isolir) kirim_wa_wablas($row['no_hp'], $pesan_isolir);
+        }
+        json_res(true, 'Pelanggan ' . $row['nama'] . ' berhasil diisolir.');
+
+    // ── ISOLIR MASSAL ─────────────────────────────────────────
+    case 'isolir_massal':
+        auth_role([ROLE_ADMIN]);
+        if (!csrf_verify()) json_res(false, 'Token tidak valid.');
+
+        $ids = array_filter(array_map('intval', (array)(post('ids') ?: [])));
+        if (!$ids) json_res(false, 'Pilih minimal satu pelanggan.');
+
+        if (!mikrotik_is_online()) json_res(false, 'Mikrotik tidak dapat dijangkau. Pastikan router online sebelum isolir.');
+        $acs_cek = acs_test_connection();
+        if (!$acs_cek['ok']) json_res(false, 'ACS tidak dapat dijangkau. Pastikan ACS online sebelum isolir.');
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $rows_massal  = db_rows(
+            "SELECT pl.id, pl.nama, pl.no_hp, pl.status,
+                    pk.nama as nama_paket,
+                    py.bulan_tagihan, py.jumlah,
+                    msc.ros_id as mt_ros_id, gdc.device_id as acs_device_id
+             FROM pelanggan pl
+             LEFT JOIN paket pk ON pk.id = pl.paket_id
+             LEFT JOIN pembayaran py ON py.pelanggan_id = pl.id
+                 AND py.status = 'belum' AND py.bulan_tagihan = DATE_FORMAT(NOW(),'%Y-%m')
+             LEFT JOIN mikrotik_secrets_cache msc ON msc.id = pl.mikrotik_secrets_id
+             LEFT JOIN genieacs_devices_cache gdc ON gdc.id = msc.genieacs_device_id
+             WHERE pl.id IN ($placeholders) AND pl.status = 'aktif'",
+            array_values($ids)
+        );
+
+        $diproses = 0;
+        $now      = date('Y-m-d H:i:s');
+        $kasir_id = current_user()['id'];
+        foreach ($rows_massal as $r) {
+            db_update('pelanggan', ['status' => 'isolir'], 'id = ?', [$r['id']]);
+            db_insert('pelanggan_status_log', [
+                'pelanggan_id' => $r['id'],
+                'tipe'         => 'status',
+                'details'      => json_encode(['lama' => $r['status'], 'baru' => 'isolir']),
+                'diubah_oleh'  => $kasir_id,
+                'created_at'   => $now,
+            ]);
+            if ($r['mt_ros_id']) {
+                mikrotik_secret_push_profile($r['mt_ros_id'], 'profile-Isolir', false);
+            }
+            if ($r['acs_device_id']) {
+                acs_reboot_device($r['acs_device_id']);
+            }
+            if (!empty($r['no_hp'])) {
+                $pesan_isolir = format_pesan_isolir($r);
+                if ($pesan_isolir) kirim_wa_wablas($r['no_hp'], $pesan_isolir);
+            }
+            $diproses++;
+        }
+        json_res(true, "$diproses pelanggan berhasil diisolir.");
+
     // ── GET JSON (untuk modal edit) ───────────────────────────
     case 'get_json':
         auth_role([ROLE_ADMIN, ROLE_KEUANGAN]);

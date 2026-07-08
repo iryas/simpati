@@ -29,9 +29,12 @@ switch ($action) {
             redirect($back_url);
         }
 
+        $grace = max(0, min(30, (int)post('grace_period_isolir')));
+
         $updates = [
-            'tgl_mulai_tagihan' => (string)$tgl,
-            'nama_isp'          => $nama_isp,
+            'tgl_mulai_tagihan'   => (string)$tgl,
+            'nama_isp'            => $nama_isp,
+            'grace_period_isolir' => (string)$grace,
         ];
 
         foreach ($updates as $key => $val) {

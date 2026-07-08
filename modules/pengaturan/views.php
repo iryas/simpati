@@ -6,8 +6,9 @@ require_once __DIR__ . '/../../system/init.php';
 auth_check();
 auth_role([ROLE_ADMIN]);
 
-$tgl_mulai     = app_setting('tgl_mulai_tagihan', '1');
-$nama_isp      = app_setting('nama_isp', 'KahfiNet');
+$tgl_mulai          = app_setting('tgl_mulai_tagihan', '1');
+$nama_isp           = app_setting('nama_isp', 'KahfiNet');
+$grace_period_isolir = app_setting('grace_period_isolir', '3');
 $wablas_aktif  = app_setting('wablas_aktif', '0');
 $wablas_token  = app_setting('wablas_token', '');
 $wablas_secret = app_setting('wablas_secret', '');
@@ -75,6 +76,24 @@ ob_start();
               baru boleh mulai <strong>tgl <?= $tgl ?></strong>.
               Hari ini masih tgl <?= $now ?>.
             <?php endif; ?>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label font-weight-bold">Grace Period Isolir</label>
+            <div class="d-flex align-items-center" style="gap:10px">
+              <input type="number" name="grace_period_isolir" class="form-control"
+                     value="<?= (int)$grace_period_isolir ?>" min="0" max="30" required
+                     style="width:90px">
+              <span class="text-muted" style="font-size:14px;white-space:nowrap">hari setelah tanggal mulai tagihan</span>
+            </div>
+            <small class="text-muted mt-1 d-block">
+              Pelanggan belum bayar lewat tgl
+              <strong><?= (int)$tgl_mulai + (int)$grace_period_isolir ?></strong>
+              akan muncul di widget isolir dashboard.
+              Contoh: mulai tgl <strong><?= (int)$tgl_mulai ?></strong> + grace
+              <strong><?= (int)$grace_period_isolir ?></strong> hari =
+              isolir mulai tgl <strong><?= (int)$tgl_mulai + (int)$grace_period_isolir ?></strong>.
+            </small>
           </div>
 
           <button type="submit" class="btn btn-primary btn-sm">

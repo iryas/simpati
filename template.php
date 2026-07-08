@@ -181,6 +181,11 @@ $user = current_user();
             <i class="fas fa-user-shield"></i><span>Pengguna</span>
           </a>
         </li>
+        <li class="nav-item <?= ($active_menu ?? '') === 'template_wa' ? 'active' : '' ?>">
+          <a href="<?= BASE_URL ?>modules/template_wa/views.php">
+            <i class="fab fa-whatsapp"></i><span>Template WA</span>
+          </a>
+        </li>
       <?php endif; ?>
 
         <li class="nav-item <?= ($active_menu ?? '') === 'tentang' ? 'active' : '' ?>">

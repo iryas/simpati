@@ -10,6 +10,39 @@ $active_menu = 'tentang';
 
 $changelog = [
     [
+        'versi'    => '1.6.0',
+        'tanggal'  => '08 Jul 2026',
+        'label'    => 'Modul Template WA',
+        'warna'    => 'success',
+        'sections' => [
+            'Ditambahkan' => [
+                'Modul Template WhatsApp: kelola isi pesan WA langsung dari UI tanpa edit kode',
+                'Template "Bukti Pembayaran" — mendukung placeholder {nama_isp} dan {struk} (tabel monospace auto-generate)',
+                'Template "Pemberitahuan Isolir" — placeholder {nama_isp}, {nama}, {paket}, {periode}, {jumlah}, info rekening BRI sudah terisi default',
+                'Fungsi wa_render() dan wa_template() sebagai engine render template berbasis DB',
+                'Kirim WA pemberitahuan isolir otomatis saat aksi isolir satu-satu maupun massal dijalankan',
+            ],
+            'Perubahan' => [
+                'format_pesan_bukti_bayar() direfaktor: bagian header & footer diambil dari template DB, struk monospace tetap di-generate PHP',
+            ],
+        ],
+    ],
+    [
+        'versi'    => '1.5.0',
+        'tanggal'  => '07 Jul 2026',
+        'label'    => 'Widget Isolir Dashboard',
+        'warna'    => 'warning',
+        'sections' => [
+            'Ditambahkan' => [
+                'Widget "Kandidat Isolir" di dashboard: muncul otomatis setelah grace period terlewati, tampil untuk Admin dan Keuangan',
+                'Tombol isolir satu-satu dan isolir massal (checkbox + tombol "Isolir Semua Terpilih") — hanya Admin',
+                'Cek konektivitas Mikrotik dan ACS sebelum aksi isolir; proses dibatalkan jika salah satu offline',
+                'Aksi isolir: ubah PPP profile ke profile-Isolir di Mikrotik + reboot ONT via ACS + update status pelanggan ke isolir di DB',
+                'Setting "Grace Period Isolir" di Pengaturan (default 3 hari setelah tgl mulai tagihan)',
+            ],
+        ],
+    ],
+    [
         'versi'    => '1.4.0',
         'tanggal'  => '06 Jul 2026',
         'label'    => 'WhatsApp Gateway & Perbaikan Data',
