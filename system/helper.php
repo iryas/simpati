@@ -303,6 +303,7 @@ function format_pesan_bukti_bayar(array $row): string {
 // $row harus mengandung: nama, no_hp, nama_paket, bulan_tagihan, jumlah
 function format_pesan_isolir(array $row): string {
     $nama_isp = app_setting('nama_isp', 'KahfiNet');
+    $no_cs    = app_setting('no_cs', '');
     $bln_indo = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
     $periode  = '';
     if (!empty($row['bulan_tagihan'])) {
@@ -315,6 +316,7 @@ function format_pesan_isolir(array $row): string {
         'paket'    => $row['nama_paket'] ?? '-',
         'periode'  => $periode ?: date('Y-m'),
         'jumlah'   => rupiah((int)($row['jumlah'] ?? 0)),
+        'no_cs'    => $no_cs,
     ]);
 }
 
@@ -322,7 +324,7 @@ function format_pesan_isolir(array $row): string {
 // Return: ['ok' => bool, 'msg' => string]
 function kirim_wa_wablas(string $no_hp, string $pesan, int $pembayaran_id = 0): array {
     if (app_setting('wablas_aktif', '0') !== '1') {
-        return ['ok' => false, 'msg' => 'Wablas tidak aktif'];
+        return ['ok' => false, 'msg' => 'WA tidak aktif'];
     }
     $token  = app_setting('wablas_token', '');
     $secret = app_setting('wablas_secret', '');
@@ -366,6 +368,66 @@ function kirim_wa_wablas(string $no_hp, string $pesan, int $pembayaran_id = 0): 
     }
 
     return $result;
+}
+
+// ── Kirim WA via Fonnte ───────────────────────────────────────
+function kirim_wa_fonnte(string $no_hp, string $pesan, int $pembayaran_id = 0): array {
+    if (app_setting('wablas_aktif', '0') !== '1') {
+        return ['ok' => false, 'msg' => 'WA tidak aktif'];
+    }
+    $token = app_setting('fonnte_token', '');
+    if (!$token) {
+        return ['ok' => false, 'msg' => 'Token Fonnte belum diisi'];
+    }
+    $no = format_no_hp_wa($no_hp);
+    if (strlen($no) < 10) {
+        return ['ok' => false, 'msg' => 'Nomor HP tidak valid'];
+    }
+    $ch = curl_init('https://api.fonnte.com/send');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => http_build_query([
+            'target'      => $no,
+            'message'     => $pesan,
+            'countryCode' => '62',
+        ]),
+        CURLOPT_HTTPHEADER     => ['Authorization: ' . $token],
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+    $res = curl_exec($ch);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    if ($err) {
+        $result = ['ok' => false, 'msg' => 'cURL: ' . $err];
+    } else {
+        $json   = json_decode($res, true);
+        $ok     = isset($json['status']) && $json['status'] === true;
+        $msg    = $ok ? ($json['detail'] ?? 'success') : ($json['reason'] ?? 'Gagal');
+        $result = ['ok' => $ok, 'msg' => $msg];
+    }
+
+    if ($pembayaran_id > 0) {
+        db_insert('wa_log', [
+            'pembayaran_id' => $pembayaran_id,
+            'no_hp'         => $no,
+            'status'        => $result['ok'] ? 'terkirim' : 'gagal',
+            'keterangan'    => mb_substr($result['msg'], 0, 255),
+            'created_at'    => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    return $result;
+}
+
+// ── Kirim WA (unified, routing ke gateway aktif) ──────────────
+function kirim_wa(string $no_hp, string $pesan, int $pembayaran_id = 0): array {
+    if (app_setting('wa_gateway', 'wablas') === 'fonnte') {
+        return kirim_wa_fonnte($no_hp, $pesan, $pembayaran_id);
+    }
+    return kirim_wa_wablas($no_hp, $pesan, $pembayaran_id);
 }
 
 // ── POST / GET helper ─────────────────────────────────────────

@@ -29,12 +29,14 @@ switch ($action) {
             redirect($back_url);
         }
 
-        $grace = max(0, min(30, (int)post('grace_period_isolir')));
+        $grace  = max(0, min(30, (int)post('grace_period_isolir')));
+        $no_cs  = mb_substr(trim(post('no_cs')), 0, 20);
 
         $updates = [
             'tgl_mulai_tagihan'   => (string)$tgl,
             'nama_isp'            => $nama_isp,
             'grace_period_isolir' => (string)$grace,
+            'no_cs'               => $no_cs,
         ];
 
         foreach ($updates as $key => $val) {
@@ -49,20 +51,25 @@ switch ($action) {
         flash('success', 'Pengaturan berhasil disimpan.');
         redirect($back_url);
 
-    case 'save_wablas':
+    case 'save_wa':
+    case 'save_wablas': // backward compat
         if (!csrf_verify()) {
             flash('danger', 'Token tidak valid.');
             redirect($back_url);
         }
 
         $wablas_aktif  = post('wablas_aktif') === '1' ? '1' : '0';
+        $wa_gateway    = in_array(post('wa_gateway'), ['wablas', 'fonnte']) ? post('wa_gateway') : 'wablas';
         $wablas_token  = mb_substr(trim(post('wablas_token')), 0, 500);
         $wablas_secret = mb_substr(trim(post('wablas_secret')), 0, 500);
+        $fonnte_token  = mb_substr(trim(post('fonnte_token')), 0, 500);
 
         foreach ([
             'wablas_aktif'  => $wablas_aktif,
+            'wa_gateway'    => $wa_gateway,
             'wablas_token'  => $wablas_token,
             'wablas_secret' => $wablas_secret,
+            'fonnte_token'  => $fonnte_token,
         ] as $key => $val) {
             db_query(
                 "INSERT INTO app_settings (setting_key, setting_val)

@@ -406,7 +406,7 @@ switch ($action) {
         $wa_ket = '';
         if ($row_wa && !empty($row_wa['no_hp'])) {
             $pesan  = format_pesan_bukti_bayar($row_wa);
-            $wa_res = kirim_wa_wablas($row_wa['no_hp'], $pesan, $id);
+            $wa_res = kirim_wa($row_wa['no_hp'], $pesan, $id);
             if ($wa_res['ok']) {
                 $wa_ket = ' WA terkirim ke ' . $row_wa['no_hp'] . '.';
             }
@@ -530,7 +530,7 @@ switch ($action) {
             json_res(false, 'Tagihan tidak ditemukan atau nomor HP kosong.');
         }
         $pesan  = format_pesan_bukti_bayar($row);
-        $wa_res = kirim_wa_wablas($row['no_hp'], $pesan, $id);
+        $wa_res = kirim_wa($row['no_hp'], $pesan, $id);
         json_res($wa_res['ok'], $wa_res['ok'] ? 'WA berhasil dikirim ke ' . $row['no_hp'] . '.' : $wa_res['msg']);
 
     default:

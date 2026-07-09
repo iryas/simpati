@@ -10,6 +10,27 @@ $active_menu = 'tentang';
 
 $changelog = [
     [
+        'versi'    => '1.7.0',
+        'tanggal'  => '09 Jul 2026',
+        'label'    => 'Fonnte WA Gateway',
+        'warna'    => 'success',
+        'sections' => [
+            'Ditambahkan' => [
+                'Integrasi Fonnte WhatsApp Gateway sebagai alternatif Wablas: endpoint api.fonnte.com, header Authorization tunggal (tanpa secret key)',
+                'Pilihan gateway di Pengaturan WA: Fonnte (rekomendasi) atau Wablas — bisa diganti kapan saja tanpa restart',
+                'Fungsi kirim_wa() sebagai unified wrapper: secara otomatis routing ke gateway yang aktif',
+                'Setting No. CS / WhatsApp Admin (placeholder {no_cs}) untuk dicantumkan di pesan isolir',
+                'Placeholder {no_cs} ditambahkan ke template WA Isolir: info nomor konfirmasi pembayaran',
+            ],
+            'Perubahan' => [
+                'Semua pemanggilan kirim_wa_wablas() diganti ke kirim_wa() — gateway dipilih dari Pengaturan, bukan hardcode di kode',
+                'Form Pengaturan WA didesain ulang: satu form untuk semua gateway, JS toggle tampilkan bagian Fonnte atau Wablas sesuai pilihan',
+                'Teks pesan isolir diperbaiki: "Setelah bayar, kabari kami..." → "Setelah transfer, silakan konfirmasi ke: {no_cs}"',
+                'Script inline di halaman Pengaturan dipindah ke $extra_js agar tidak konflik dengan loading jQuery',
+            ],
+        ],
+    ],
+    [
         'versi'    => '1.6.0',
         'tanggal'  => '08 Jul 2026',
         'label'    => 'Modul Template WA',

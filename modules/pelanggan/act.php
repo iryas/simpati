@@ -411,7 +411,7 @@ switch ($action) {
         }
         if (!empty($row['no_hp'])) {
             $pesan_isolir = format_pesan_isolir($row);
-            if ($pesan_isolir) kirim_wa_wablas($row['no_hp'], $pesan_isolir);
+            if ($pesan_isolir) kirim_wa($row['no_hp'], $pesan_isolir);
         }
         json_res(true, 'Pelanggan ' . $row['nama'] . ' berhasil diisolir.');
 
@@ -463,7 +463,7 @@ switch ($action) {
             }
             if (!empty($r['no_hp'])) {
                 $pesan_isolir = format_pesan_isolir($r);
-                if ($pesan_isolir) kirim_wa_wablas($r['no_hp'], $pesan_isolir);
+                if ($pesan_isolir) kirim_wa($r['no_hp'], $pesan_isolir);
             }
             $diproses++;
         }
