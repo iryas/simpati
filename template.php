@@ -212,10 +212,57 @@ $user = current_user();
       </button>
       <div class="topbar-title"><?= clean($page_title ?? 'Dashboard') ?></div>
       <div class="topbar-right">
-        <span class="topbar-date">
-          <i class="far fa-calendar-alt mr-1"></i>
-          <?= date('d M Y') ?>
-        </span>
+
+        <!-- Jam & Tanggal -->
+        <div class="topbar-clock d-none d-md-flex align-items-center" style="gap:6px">
+          <i class="far fa-calendar-alt"></i>
+          <span><?= date('d M Y') ?></span>
+          <span class="text-muted mx-1">|</span>
+          <i class="far fa-clock"></i>
+          <span id="topbar-jam">--:--:--</span>
+        </div>
+
+        <!-- Indikator Status Mikrotik & ACS (Admin & Teknisi) -->
+        <?php if (in_array($user['role'], [ROLE_ADMIN, ROLE_TEKNISI])): ?>
+        <div class="topbar-netstatus d-none d-lg-flex" id="topbarNetStatus" title="Status jaringan">
+          <span class="netstatus-item" title="Mikrotik">
+            <span class="netstatus-dot" id="nsDotMikrotik"></span>
+            <span>Mikrotik</span>
+          </span>
+          <span class="netstatus-item" title="ACS / GenieACS">
+            <span class="netstatus-dot" id="nsDotAcs"></span>
+            <span>ACS</span>
+          </span>
+        </div>
+        <?php endif; ?>
+
+        <!-- Profile Dropdown -->
+        <div class="dropdown">
+          <button class="topbar-profile-btn dropdown-toggle" data-toggle="dropdown"
+                  aria-haspopup="true" aria-expanded="false" id="dropdownProfil">
+            <div class="topbar-avatar"><i class="fas fa-user-circle"></i></div>
+            <span class="topbar-username d-none d-sm-inline"><?= clean($user['nama']) ?></span>
+            <i class="fas fa-chevron-down topbar-caret"></i>
+          </button>
+          <div class="dropdown-menu dropdown-menu-right topbar-dropdown-menu"
+               aria-labelledby="dropdownProfil">
+            <div class="dropdown-header">
+              <div class="font-weight-bold" style="font-size:14px;color:#1e293b"><?= clean($user['nama']) ?></div>
+              <div class="mt-1"><?= badge_role($user['role']) ?></div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item" href="#"
+               data-toggle="modal" data-target="#modalGantiPassword">
+              <i class="fas fa-key mr-2 text-warning"></i>Ganti Password
+            </a>
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item text-danger"
+               href="<?= BASE_URL ?>act.php?action=logout">
+              <i class="fas fa-sign-out-alt mr-2"></i>Keluar
+            </a>
+          </div>
+        </div>
+
       </div>
     </nav>
 
@@ -256,6 +303,93 @@ $user = current_user();
   <script src="<?= BASE_URL ?>assets/js/app.js?v=<?= filemtime(__DIR__ . '/assets/js/app.js') ?>"></script>
   <!-- Extra JS per-halaman (dirender SETELAH jQuery siap) -->
   <?= $extra_js ?? '' ?>
+
+  <!-- Modal Ganti Password -->
+  <div class="modal fade" id="modalGantiPassword" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <form method="POST" action="<?= BASE_URL ?>act.php" id="formGantiPassword">
+          <?php csrf_field(); ?>
+          <input type="hidden" name="action" value="ganti_password">
+          <div class="modal-header">
+            <h6 class="modal-title font-weight-bold">
+              <i class="fas fa-key mr-2 text-warning"></i>Ganti Password
+            </h6>
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label font-weight-bold" style="font-size:13px">Password Lama</label>
+              <input type="password" name="password_lama" class="form-control form-control-sm" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label font-weight-bold" style="font-size:13px">Password Baru</label>
+              <input type="password" name="password_baru" id="inputPasswordBaru"
+                     class="form-control form-control-sm" required minlength="6">
+              <small class="text-muted">Minimal 6 karakter.</small>
+            </div>
+            <div class="form-group mb-0">
+              <label class="form-label font-weight-bold" style="font-size:13px">Konfirmasi Password Baru</label>
+              <input type="password" name="password_konfirmasi" id="inputPasswordKonfirmasi"
+                     class="form-control form-control-sm" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="fas fa-save mr-1"></i>Simpan
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Real-time clock
+    (function tick() {
+      var now = new Date();
+      var p   = function(n){ return String(n).padStart(2,'0'); };
+      var el  = document.getElementById('topbar-jam');
+      if (el) el.textContent = p(now.getHours())+':'+p(now.getMinutes())+':'+p(now.getSeconds());
+      setTimeout(tick, 1000);
+    })();
+
+    // Validasi konfirmasi password sebelum submit
+    $('#formGantiPassword').on('submit', function() {
+      if ($('#inputPasswordBaru').val() !== $('#inputPasswordKonfirmasi').val()) {
+        toastr.error('Konfirmasi password tidak cocok.');
+        return false;
+      }
+    });
+
+    // Reset form saat modal ditutup
+    $('#modalGantiPassword').on('hidden.bs.modal', function() {
+      $(this).find('form')[0].reset();
+    });
+
+    <?php if (in_array($user['role'], [ROLE_ADMIN, ROLE_TEKNISI])): ?>
+    // Cek status Mikrotik & ACS via AJAX (non-blocking)
+    (function checkNetStatus() {
+      function setDot(id, online) {
+        var dot = document.getElementById(id);
+        if (dot) dot.className = 'netstatus-dot ' + (online ? 'online' : 'offline');
+      }
+      $.getJSON('<?= BASE_URL ?>api/net_status.php')
+        .done(function(res) {
+          if (res.success) {
+            setDot('nsDotMikrotik', res.data.mikrotik);
+            setDot('nsDotAcs', res.data.acs);
+          }
+        })
+        .fail(function() {
+          setDot('nsDotMikrotik', false);
+          setDot('nsDotAcs', false);
+        });
+      setTimeout(checkNetStatus, 60000);
+    })();
+    <?php endif; ?>
+  </script>
 </body>
 
 </html>

@@ -82,6 +82,36 @@ switch ($action) {
         }
         break;
 
+    case 'ganti_password':
+        auth_check();
+        if (!is_post() || !csrf_verify()) {
+            flash('danger', 'Permintaan tidak valid.');
+            redirect(BASE_URL . 'index.php');
+        }
+
+        $password_lama       = post('password_lama');
+        $password_baru       = post('password_baru');
+        $password_konfirmasi = post('password_konfirmasi');
+
+        $u = db_row("SELECT * FROM pengguna WHERE id = ? LIMIT 1", [$_SESSION['user_id']]);
+
+        if (!$u || !password_verify($password_lama, $u['password'])) {
+            flash('danger', 'Password lama tidak sesuai.');
+            redirect(BASE_URL . 'index.php');
+        }
+        if (mb_strlen($password_baru) < 6) {
+            flash('danger', 'Password baru minimal 6 karakter.');
+            redirect(BASE_URL . 'index.php');
+        }
+        if ($password_baru !== $password_konfirmasi) {
+            flash('danger', 'Konfirmasi password tidak cocok.');
+            redirect(BASE_URL . 'index.php');
+        }
+
+        db_update('pengguna', ['password' => password_hash($password_baru, PASSWORD_DEFAULT)], 'id = ?', [$u['id']]);
+        flash('success', 'Password berhasil diubah.');
+        redirect(BASE_URL . 'index.php');
+
     case 'logout':
         auth_check();
         // Hapus remember token dari DB

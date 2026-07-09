@@ -252,9 +252,138 @@ a { text-decoration: none; }
   flex: 1;
 }
 
-.topbar-date {
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.topbar-clock {
   font-size: 13px;
   color: #64748b;
+  white-space: nowrap;
+}
+
+#topbar-jam {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #1e293b;
+  letter-spacing: .3px;
+}
+
+/* Net status indicators */
+.topbar-netstatus {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px;
+  border-right: 1px solid #e2e8f0;
+  margin-right: 4px;
+  padding-right: 16px;
+}
+
+.netstatus-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.netstatus-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  display: inline-block;
+  flex-shrink: 0;
+  transition: background .3s, box-shadow .3s;
+}
+
+.netstatus-dot.online {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16,185,129,.2);
+}
+
+.netstatus-dot.offline {
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239,68,68,.2);
+}
+
+/* Profile dropdown button */
+.topbar-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1e293b !important;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: transparent;
+  transition: background .18s;
+  text-decoration: none;
+}
+
+.topbar-profile-btn:hover,
+.topbar-profile-btn:focus {
+  background: #f1f5f9;
+  box-shadow: none;
+  outline: none;
+}
+
+.topbar-profile-btn::after { display: none; }
+
+.topbar-avatar {
+  font-size: 24px;
+  color: #64748b;
+  line-height: 1;
+}
+
+.topbar-username {
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-caret {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+/* Profile dropdown menu */
+.topbar-dropdown-menu {
+  border: none !important;
+  box-shadow: 0 8px 28px rgba(0,0,0,.13) !important;
+  border-radius: 10px !important;
+  padding: 6px 0 !important;
+  min-width: 210px !important;
+  margin-top: 6px !important;
+}
+
+.topbar-dropdown-menu .dropdown-header {
+  padding: 10px 16px 8px;
+  line-height: 1.4;
+}
+
+.topbar-dropdown-menu .dropdown-item {
+  padding: 9px 16px;
+  font-size: 13.5px;
+  color: #374151;
+  transition: background .15s;
+}
+
+.topbar-dropdown-menu .dropdown-item:hover {
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+.topbar-dropdown-menu .dropdown-divider {
+  margin: 4px 0;
 }
 
 /* ── Main Content ───────────────────────────────────────────── */
