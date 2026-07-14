@@ -563,6 +563,69 @@ body.sidebar-collapsed #content-wrapper { margin-left: 68px; }
   color: #94a3b8;
 }
 
+/* ── Preloader ───────────────────────────────────────────────── */
+#preloader {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: linear-gradient(135deg, #1e3a6e, #2563eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  transition: opacity .5s ease, visibility .5s ease;
+}
+#preloader.hide {
+  opacity: 0;
+  visibility: hidden;
+}
+.preloader-content {
+  text-align: center;
+  color: #fff;
+}
+.logo-pulse {
+  font-size: 52px;
+  color: #fff;
+  margin-bottom: 12px;
+  animation: plPulse 1.2s ease-in-out infinite;
+}
+.preloader-appname {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+  opacity: .9;
+}
+.loading-bar {
+  width: 180px;
+  height: 4px;
+  background: rgba(255,255,255,.25);
+  border-radius: 4px;
+  margin: 0 auto 12px;
+  overflow: hidden;
+}
+.loading-progress {
+  height: 100%;
+  background: #fff;
+  border-radius: 4px;
+  animation: plBar 1.4s ease-in-out infinite;
+}
+.loading-text {
+  font-size: 13px;
+  opacity: .75;
+  margin: 0;
+  letter-spacing: 1px;
+}
+@keyframes plPulse {
+  0%, 100% { transform: scale(1);   opacity: 1; }
+  50%       { transform: scale(1.1); opacity: .8; }
+}
+@keyframes plBar {
+  0%   { width: 0%;   margin-left: 0; }
+  50%  { width: 70%;  margin-left: 15%; }
+  100% { width: 0%;   margin-left: 100%; }
+}
+
 /* ── DataTables Processing Indicator ────────────────────────── */
 .dataTables_processing {
   position: absolute;

@@ -34,6 +34,20 @@ $user = current_user();
 
 <body>
 
+  <!-- ── Preloader ─────────────────────────────────────────────── -->
+  <div id="preloader">
+    <div class="preloader-content">
+      <div class="logo-pulse">
+        <i class="fas fa-network-wired"></i>
+      </div>
+      <div class="preloader-appname"><?= APP_NAME ?></div>
+      <div class="loading-bar">
+        <div class="loading-progress"></div>
+      </div>
+      <p class="loading-text">Memuat...</p>
+    </div>
+  </div>
+
   <!-- ── Sidebar ──────────────────────────────────────────────── -->
   <nav id="sidebar">
     <div class="sidebar-brand">
@@ -389,6 +403,13 @@ $user = current_user();
       setTimeout(checkNetStatus, 60000);
     })();
     <?php endif; ?>
+
+  // Preloader: sembunyikan saat halaman selesai load
+  $(window).on('load', function () {
+    setTimeout(function () {
+      $('#preloader').addClass('hide');
+    }, 300);
+  });
   </script>
 </body>
 
