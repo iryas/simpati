@@ -82,6 +82,17 @@ switch ($action) {
         }
         break;
 
+    case 'wa_reset_queue':
+        auth_check();
+        auth_role(ROLE_ADMIN);
+        if (!is_post() || !csrf_verify()) {
+            json_res(false, 'Permintaan tidak valid.');
+        }
+        db_query(
+            "UPDATE wa_queue SET status='pending', attempts=0, next_retry=NULL, error_msg=NULL WHERE status='gagal'"
+        );
+        json_res(true, 'Semua job gagal dikembalikan ke pending.');
+
     case 'ganti_password':
         auth_check();
         if (!is_post() || !csrf_verify()) {

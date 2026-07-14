@@ -21,7 +21,7 @@ $rows = db_rows(
      FROM pengeluaran pg
      LEFT JOIN pengguna u ON u.id = pg.dicatat_oleh
      WHERE $where
-     ORDER BY FIELD(pg.kategori, 'bandwidth', 'listrik', 'lainnya') ASC, pg.tanggal ASC, pg.id ASC",
+     ORDER BY FIELD(pg.kategori, 'bandwidth', 'listrik', 'transport', 'lainnya') ASC, pg.tanggal ASC, pg.id ASC",
     $params
 );
 
@@ -32,6 +32,7 @@ $keuntungan       = $totalOmset - $totalPengeluaran;
 $badgeKategori = [
     'bandwidth' => ['Bandwidth', 'info'],
     'listrik'   => ['Listrik', 'warning'],
+    'transport' => ['Transport', 'primary'],
     'lainnya'   => ['Lainnya', 'secondary'],
 ];
 
@@ -87,6 +88,7 @@ ob_start();
         <option value="">Semua Kategori</option>
         <option value="bandwidth" <?= $kategori === 'bandwidth' ? 'selected' : '' ?>>Bandwidth</option>
         <option value="listrik" <?= $kategori === 'listrik' ? 'selected' : '' ?>>Listrik</option>
+        <option value="transport" <?= $kategori === 'transport' ? 'selected' : '' ?>>Transport</option>
         <option value="lainnya" <?= $kategori === 'lainnya' ? 'selected' : '' ?>>Lainnya</option>
       </select>
       <button type="submit" class="btn btn-primary btn-sm">
@@ -170,6 +172,7 @@ ob_start();
             <select name="kategori" class="form-control" id="tambahKategori" required>
               <option value="bandwidth">Bandwidth</option>
               <option value="listrik">Listrik</option>
+              <option value="transport">Transport</option>
               <option value="lainnya">Lainnya</option>
             </select>
           </div>
@@ -255,6 +258,7 @@ function toggleTambahKeterangan() {
         '<select name="kategori" id="edit_kategori" class="form-control" required>' +
           '<option value="bandwidth"' + (d.kategori === 'bandwidth' ? ' selected' : '') + '>Bandwidth</option>' +
           '<option value="listrik"' + (d.kategori === 'listrik' ? ' selected' : '') + '>Listrik</option>' +
+          '<option value="transport"' + (d.kategori === 'transport' ? ' selected' : '') + '>Transport</option>' +
           '<option value="lainnya"' + (d.kategori === 'lainnya' ? ' selected' : '') + '>Lainnya</option>' +
         '</select>' +
       '</div>' +

@@ -5,6 +5,22 @@
 require_once __DIR__ . '/../../system/init.php';
 auth_check();
 
+// ── WA queue: job gagal permanen ─────────────────────────────
+$wa_gagal_list  = [];
+$wa_gagal_count = 0;
+if (current_user()['role'] === ROLE_ADMIN) {
+    $wa_gagal_list = db_rows(
+        "SELECT wq.id, wq.no_hp, wq.tipe, wq.attempts, wq.error_msg, wq.created_at,
+                pl.nama as nama_pelanggan
+         FROM wa_queue wq
+         LEFT JOIN pembayaran pb ON pb.id = wq.pembayaran_id
+         LEFT JOIN pelanggan pl ON pl.id = pb.pelanggan_id
+         WHERE wq.status = 'gagal'
+         ORDER BY wq.created_at DESC LIMIT 50"
+    );
+    $wa_gagal_count = count($wa_gagal_list);
+}
+
 // ── Statistik ─────────────────────────────────────────────────
 $total_pelanggan = db_row("SELECT COUNT(*) as n FROM pelanggan")['n'] ?? 0;
 $aktif           = db_row("SELECT COUNT(*) as n FROM pelanggan WHERE status='aktif'")['n'] ?? 0;
@@ -126,6 +142,74 @@ $active_menu = 'dashboard';
 
 ob_start();
 ?>
+
+<?php if ($wa_gagal_count > 0): ?>
+<div class="card mb-4" style="border:1.5px solid #dc3545" id="cardWaGagal">
+  <div class="card-header d-flex align-items-center justify-content-between flex-wrap"
+       style="gap:8px;background:#fff5f5;border-bottom:1.5px solid #dc3545">
+    <div>
+      <span class="font-weight-bold text-danger">
+        <i class="fas fa-exclamation-circle mr-2"></i>WA Gagal Terkirim
+        <span class="badge badge-danger ml-1"><?= $wa_gagal_count ?></span>
+      </span>
+      <br>
+      <small class="text-muted" style="font-size:11px">
+        Sudah 3x percobaan tetap gagal. Klik reset untuk coba ulang via worker.
+      </small>
+    </div>
+    <button type="button" class="btn btn-sm btn-danger" id="btnWaReset">
+      <i class="fas fa-redo mr-1"></i>Reset Semua ke Pending
+    </button>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0" style="font-size:13px">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Pelanggan / No HP</th>
+            <th>Tipe</th>
+            <th>Percobaan</th>
+            <th>Pesan Error</th>
+            <th>Waktu</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($wa_gagal_list as $i => $wg): ?>
+          <tr>
+            <td class="text-muted"><?= $i + 1 ?></td>
+            <td>
+              <?php if ($wg['nama_pelanggan']): ?>
+                <div class="font-weight-bold"><?= clean($wg['nama_pelanggan']) ?></div>
+              <?php endif; ?>
+              <small class="text-muted"><?= clean($wg['no_hp']) ?></small>
+            </td>
+            <td>
+              <?php if ($wg['tipe'] === 'bukti_bayar'): ?>
+                <span class="badge badge-info">Bukti Bayar</span>
+              <?php elseif ($wg['tipe'] === 'isolir'): ?>
+                <span class="badge badge-warning">Isolir</span>
+              <?php else: ?>
+                <span class="badge badge-secondary"><?= clean($wg['tipe']) ?></span>
+              <?php endif; ?>
+            </td>
+            <td class="text-center">
+              <span class="badge badge-danger"><?= (int)$wg['attempts'] ?>x</span>
+            </td>
+            <td style="max-width:240px;word-break:break-word;font-size:12px" class="text-danger">
+              <?= clean($wg['error_msg'] ?: '—') ?>
+            </td>
+            <td style="font-size:12px;white-space:nowrap" class="text-muted">
+              <?= $wg['created_at'] ? date('d/m H:i', strtotime($wg['created_at'])) : '—' ?>
+            </td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
 
 <!-- Stat Cards -->
 <div class="row mb-4">
@@ -467,6 +551,7 @@ ob_start();
         </button>
         <?php endif; ?>
       </div>
+
       <div class="card-body p-0">
         <?php if ($kandidat_isolir): ?>
         <div class="table-responsive">
@@ -544,19 +629,25 @@ ob_start();
       ? { action: 'isolir_massal', ids: ids, _csrf: CSRF }
       : { action: 'isolir', id: ids[0], _csrf: CSRF };
 
+    $('#btnIsolirSemua, .btn-isolir-satu').prop('disabled', true).css('opacity', .6);
+
     $.ajax({
       url: BASE + 'modules/pelanggan/act.php',
       method: 'POST',
       data: data,
       success: function (res) {
         if (res.success) {
-          toastr.success(res.message);
+          toastr.success(res.msg);
           setTimeout(() => location.reload(), 1500);
         } else {
-          toastr.error(res.message);
+          toastr.error(res.msg);
+          $('#btnIsolirSemua, .btn-isolir-satu').prop('disabled', false).css('opacity', 1);
         }
       },
-      error: function () { toastr.error('Terjadi kesalahan jaringan.'); }
+      error: function () {
+        toastr.error('Terjadi kesalahan jaringan.');
+        $('#btnIsolirSemua, .btn-isolir-satu').prop('disabled', false).css('opacity', 1);
+      }
     });
   }
 
@@ -582,4 +673,32 @@ ob_start();
 
 <?php
 $content = ob_get_clean();
+
+ob_start();
+if ($wa_gagal_count > 0):
+    $csrf_wa = csrf_token();
+?>
+<script>
+(function () {
+  $('#btnWaReset').on('click', function () {
+    if (!confirm('Reset semua <?= $wa_gagal_count ?> job gagal ke pending?\nPastikan worker sedang berjalan.')) return;
+    var btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Mereset...');
+    $.post('<?= BASE_URL ?>act.php', { action: 'wa_reset_queue', _csrf: '<?= $csrf_wa ?>' }, function (res) {
+      if (res.success) {
+        toastr.success(res.msg || 'Reset berhasil.');
+        $('#cardWaGagal').fadeOut(400, function () { $(this).remove(); });
+      } else {
+        toastr.error(res.msg || 'Gagal reset.');
+        btn.prop('disabled', false).html('<i class="fas fa-redo mr-1"></i>Reset Semua ke Pending');
+      }
+    }).fail(function () {
+      toastr.error('Terjadi kesalahan jaringan.');
+      btn.prop('disabled', false).html('<i class="fas fa-redo mr-1"></i>Reset Semua ke Pending');
+    });
+  });
+})();
+</script>
+<?php endif;
+$extra_js = ob_get_clean();
+
 require_once __DIR__ . '/../../template.php';

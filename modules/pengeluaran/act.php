@@ -17,7 +17,7 @@ if ($retKategori !== '') $backParams['kategori'] = $retKategori;
 
 $back_url = BASE_URL . 'modules/pengeluaran/views.php' . ($backParams ? '?' . http_build_query($backParams) : '');
 
-$KATEGORI_VALID = ['bandwidth', 'listrik', 'lainnya'];
+$KATEGORI_VALID = ['bandwidth', 'listrik', 'transport', 'lainnya'];
 
 switch ($action) {
 

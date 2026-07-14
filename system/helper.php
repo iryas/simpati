@@ -320,6 +320,24 @@ function format_pesan_isolir(array $row): string {
     ]);
 }
 
+// ── Tambah WA ke antrian (wa_queue) ──────────────────────────
+// Return true kalau berhasil masuk antrian, false kalau WA tidak aktif
+function wa_queue_push(string $no_hp, string $pesan, string $tipe = 'bukti_bayar', int $pembayaran_id = 0): bool {
+    if (app_setting('wablas_aktif', '0') !== '1') return false;
+    $no = format_no_hp_wa($no_hp);
+    if (strlen($no) < 10) return false;
+    db_insert('wa_queue', [
+        'pembayaran_id' => $pembayaran_id ?: null,
+        'no_hp'         => $no,
+        'pesan'         => $pesan,
+        'tipe'          => $tipe,
+        'status'        => 'pending',
+        'attempts'      => 0,
+        'created_at'    => date('Y-m-d H:i:s'),
+    ]);
+    return true;
+}
+
 // ── Kirim WA via Wablas ───────────────────────────────────────
 // Return: ['ok' => bool, 'msg' => string]
 function kirim_wa_wablas(string $no_hp, string $pesan, int $pembayaran_id = 0): array {

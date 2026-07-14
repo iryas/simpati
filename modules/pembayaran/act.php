@@ -406,10 +406,8 @@ switch ($action) {
         $wa_ket = '';
         if ($row_wa && !empty($row_wa['no_hp'])) {
             $pesan  = format_pesan_bukti_bayar($row_wa);
-            $wa_res = kirim_wa($row_wa['no_hp'], $pesan, $id);
-            if ($wa_res['ok']) {
-                $wa_ket = ' WA terkirim ke ' . $row_wa['no_hp'] . '.';
-            }
+            $queued = wa_queue_push($row_wa['no_hp'], $pesan, 'bukti_bayar', $id);
+            if ($queued) $wa_ket = ' WA dijadwalkan ke ' . $row_wa['no_hp'] . '.';
         }
 
         flash('success', 'Pembayaran berhasil dikonfirmasi sebesar ' . rupiah($terbayar) . '.' . $wa_ket);
@@ -530,8 +528,8 @@ switch ($action) {
             json_res(false, 'Tagihan tidak ditemukan atau nomor HP kosong.');
         }
         $pesan  = format_pesan_bukti_bayar($row);
-        $wa_res = kirim_wa($row['no_hp'], $pesan, $id);
-        json_res($wa_res['ok'], $wa_res['ok'] ? 'WA berhasil dikirim ke ' . $row['no_hp'] . '.' : $wa_res['msg']);
+        $queued = wa_queue_push($row['no_hp'], $pesan, 'bukti_bayar', $id);
+        json_res($queued, $queued ? 'WA dijadwalkan ke ' . $row['no_hp'] . ' via worker.' : 'WA tidak aktif atau nomor tidak valid.');
 
     default:
         redirect($back_url);

@@ -10,6 +10,34 @@ $active_menu = 'tentang';
 
 $changelog = [
     [
+        'versi'    => '1.8.0',
+        'tanggal'  => '14 Jul 2026',
+        'label'    => 'WA Background Queue & Peningkatan Topbar',
+        'warna'    => 'success',
+        'sections' => [
+            'Ditambahkan' => [
+                'Sistem antrian WA berbasis database (tabel wa_queue): semua pengiriman WA diproses di belakang layar',
+                'CLI Worker (php worker.php wa:work): proses antrian WA secara background dari terminal, kompatibel Windows/Mac/Linux',
+                'Jeda pengiriman random 10–30 detik antar pesan untuk mengurangi risiko pemblokiran nomor WA',
+                'Retry otomatis maksimal 3x dengan interval meningkat: gagal ke-1 → 5 menit, gagal ke-2 → 15 menit',
+                'Reset job stuck otomatis saat worker startup (job processing > 5 menit dikembalikan ke pending)',
+                'Perintah wa:status (lihat statistik antrian) dan wa:reset (kembalikan job gagal ke pending) via terminal',
+                'Dashboard Admin: card peringatan WA gagal permanen dengan tabel detail (pelanggan, nomor, tipe, error, waktu)',
+                'Tombol "Reset Semua ke Pending" di dashboard untuk coba ulang pengiriman yang gagal via AJAX',
+                'Topbar: jam real-time yang diperbarui setiap detik',
+                'Topbar: dropdown profil dengan nama pengguna, badge role, ganti password, dan tombol logout',
+                'Topbar: indikator status koneksi Mikrotik dan ACS (dot hijau/merah, polling setiap 60 detik) — hanya Admin & Teknisi',
+                'Fitur Ganti Password langsung dari topbar tanpa perlu ke halaman pengaturan pengguna',
+                'Kategori Transport di modul Pengeluaran untuk pencatatan biaya perjalanan ke lokasi',
+            ],
+            'Perubahan' => [
+                'Konfirmasi pembayaran (bayar): pengiriman WA berubah dari langsung ke antrian queue',
+                'Tombol Kirim/Kirim Ulang WA di halaman Pembayaran: berubah dari kirim langsung ke antrian queue',
+                'Aksi isolir satu-satu dan massal: pengiriman WA pemberitahuan melalui antrian queue',
+            ],
+        ],
+    ],
+    [
         'versi'    => '1.7.0',
         'tanggal'  => '09 Jul 2026',
         'label'    => 'Fonnte WA Gateway',
