@@ -595,7 +595,7 @@ function toggleBlokPotonganTambah() {
       width: '100%',
       minimumInputLength: 0,
       ajax: {
-        url: '<?= BASE_URL ?>api/search_pelanggan.php',
+        url: '{$base_url}api/search_pelanggan.php',
         dataType: 'json',
         delay: 250,
         data: function (p) { return { q: p.term || '', status: 'aktif', limit: 5 }; },
