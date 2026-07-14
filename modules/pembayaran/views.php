@@ -33,6 +33,7 @@ ob_start();
     </small>
   </h5>
   <div class="d-flex" style="gap:8px">
+    <?php if ($bulan >= $bulan_now): ?>
     <form method="POST" action="<?= BASE_URL ?>modules/pembayaran/act.php" id="formGenerate" class="d-inline">
       <?php csrf_field(); ?>
       <input type="hidden" name="action" value="generate">
@@ -50,6 +51,7 @@ ob_start();
         </button>
       <?php endif; ?>
     </form>
+    <?php endif; ?>
     <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modalTambah">
       <i class="fas fa-plus mr-1"></i>Catat Pembayaran
     </button>
