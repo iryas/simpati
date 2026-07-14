@@ -248,8 +248,15 @@ switch ($action) {
             $bulan = date('Y-m');
         }
 
-        // Blokir generate jika bulan berjalan dan belum sampai tgl_mulai_tagihan
+        // Blokir generate untuk bulan yang sudah lewat
         $tgl_mulai = (int)app_setting('tgl_mulai_tagihan', '1');
+        if ($bulan < date('Y-m')) {
+            flash('warning', 'Tidak dapat generate tagihan untuk bulan yang sudah lewat.');
+            $backParams['bulan'] = $bulan;
+            redirect(BASE_URL . 'modules/pembayaran/views.php?' . http_build_query($backParams));
+        }
+
+        // Blokir generate jika bulan berjalan dan belum sampai tgl_mulai_tagihan
         if ($bulan === date('Y-m') && date('j') < $tgl_mulai) {
             flash('warning', "Generate tagihan bulan ini baru boleh mulai tanggal $tgl_mulai.");
             $backParams['bulan'] = $bulan;
