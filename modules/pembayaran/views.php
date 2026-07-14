@@ -16,7 +16,7 @@ $petugas    = db_rows("SELECT id, nama FROM pengguna WHERE role IN ('admin','keu
 // ── Setting tagihan ───────────────────────────────────────────
 $tgl_mulai      = (int)app_setting('tgl_mulai_tagihan', '1');
 $bulan_now      = date('Y-m');
-$boleh_generate = ($bulan !== $bulan_now) || (date('j') >= $tgl_mulai);
+$boleh_generate = ($bulan > $bulan_now) || ($bulan === $bulan_now && date('j') >= $tgl_mulai);
 $label_periode  = label_periode_tagihan($bulan, $tgl_mulai);
 
 $page_title  = 'Pembayaran';
