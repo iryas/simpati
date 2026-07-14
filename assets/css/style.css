@@ -584,17 +584,6 @@ body.sidebar-collapsed #content-wrapper { margin-left: 68px; }
   white-space: nowrap;
 }
 .dataTables_processing > div { display: none; }
-.dataTables_processing::before {
-  content: '';
-  width: 14px;
-  height: 14px;
-  border: 2px solid #cbd5e1;
-  border-top-color: #1e4080;
-  border-radius: 50%;
-  animation: dtSpin .6s linear infinite;
-  flex-shrink: 0;
-}
-@keyframes dtSpin { to { transform: rotate(360deg); } }
 
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
