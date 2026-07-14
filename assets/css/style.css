@@ -563,6 +563,38 @@ body.sidebar-collapsed #content-wrapper { margin-left: 68px; }
   color: #94a3b8;
 }
 
+/* ── DataTables Processing Indicator ────────────────────────── */
+.dataTables_processing {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  background: rgba(255,255,255,.92);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  color: #1e4080;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.dataTables_processing::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border: 2px solid #cbd5e1;
+  border-top-color: #1e4080;
+  border-radius: 50%;
+  animation: dtSpin .6s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes dtSpin { to { transform: rotate(360deg); } }
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
   #sidebar { left: calc(-1 * var(--sidebar-width)); }
