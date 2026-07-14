@@ -181,13 +181,8 @@ $tung = db_row(
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Pelanggan <span class="text-danger">*</span></label>
-            <select name="pelanggan_id" class="form-control select2-pelanggan" id="selectPelanggan" required>
+            <select name="pelanggan_id" class="form-control" id="selectPelanggan" required>
               <option value="">— Pilih Pelanggan —</option>
-              <?php foreach ($pelanggans as $pl): ?>
-              <option value="<?= $pl['id'] ?>" data-paket="<?= $pl['paket_id'] ?>">
-                <?= clean($pl['nama']) ?> (<?= clean($pl['no_hp'] ?? '') ?>)
-              </option>
-              <?php endforeach; ?>
             </select>
           </div>
           <div class="form-group">
@@ -557,12 +552,16 @@ tabelPembayaran.on('draw', function () {
 
 // Auto-isi jumlah dari harga paket pelanggan
 const pakets = {$pakets_json};
-\$('#selectPelanggan').on('change', function() {
-  const paketId = \$(this).find(':selected').data('paket');
-  if (paketId && pakets[paketId]) {
-    \$('#inputJumlah').val(pakets[paketId]);
+\$('#selectPelanggan').on('select2:select', function(e) {
+  const data = e.params.data;
+  if (data.paket_id && pakets[data.paket_id]) {
+    \$('#inputJumlah').val(pakets[data.paket_id]);
     hitungTerbayarTambah();
   }
+});
+\$('#selectPelanggan').on('select2:clear', function() {
+  \$('#inputJumlah').val('');
+  \$('#inputTerbayarDisplay').val('');
 });
 
 // Modal Catat Pembayaran: tampilkan blok potongan/terbayar hanya jika status Lunas
@@ -587,16 +586,25 @@ function toggleBlokPotonganTambah() {
   \$('#inputPotongan').val(0);
   \$('#inputTglBayar').val('{$today}');
   toggleBlokPotonganTambah();
-  // Init Select2 dengan dropdownParent agar z-index di dalam modal tidak bermasalah
+  // Init Select2 AJAX
   if (!\$('#selectPelanggan').hasClass('select2-hidden-accessible')) {
     \$('#selectPelanggan').select2({
       dropdownParent: \$('#modalTambah'),
       placeholder: '— Pilih Pelanggan —',
       allowClear: true,
       width: '100%',
+      minimumInputLength: 0,
+      ajax: {
+        url: '<?= BASE_URL ?>api/search_pelanggan.php',
+        dataType: 'json',
+        delay: 250,
+        data: function (p) { return { q: p.term || '', status: 'aktif', limit: 5 }; },
+        processResults: function (d) { return { results: d.results }; },
+        cache: true,
+      },
     });
   }
-  \$('#selectPelanggan').val('').trigger('change');
+  \$('#selectPelanggan').val(null).trigger('change');
   \$('#inputJumlah').val('');
   \$('#inputTerbayarDisplay').val('');
 });

@@ -8,12 +8,6 @@ require_once __DIR__ . '/../../system/init.php';
 auth_check();
 auth_role([ROLE_ADMIN]);
 
-$pelanggans = db_rows(
-  "SELECT pl.id, pl.nama, pl.no_hp, pl.status, pl.paket_id, ar.nama as nama_area
-   FROM pelanggan pl
-   LEFT JOIN area ar ON ar.id = pl.area_id
-   ORDER BY pl.nama"
-);
 $pakets = db_rows(
   "SELECT pk.id, pk.nama, mpc.rate_limit
    FROM paket pk
@@ -46,11 +40,6 @@ ob_start();
             <label class="form-label">Pelanggan <span class="text-danger">*</span></label>
             <select name="id" id="selectPelangganStatus" class="form-control" required style="width:100%">
               <option value="">— Cari Pelanggan —</option>
-              <?php foreach ($pelanggans as $pl): ?>
-                <option value="<?= $pl['id'] ?>" data-status="<?= $pl['status'] ?>" data-paket-id="<?= (int)$pl['paket_id'] ?>">
-                  <?= clean($pl['nama']) ?><?= $pl['no_hp'] ? ' — ' . clean($pl['no_hp']) : '' ?><?= $pl['nama_area'] ? ' (' . clean($pl['nama_area']) . ')' : '' ?>
-                </option>
-              <?php endforeach; ?>
             </select>
           </div>
           <div class="form-group">
@@ -97,37 +86,50 @@ $base_url = BASE_URL;
 
 $extra_js = <<<HTML
 <script>
+var _selectedPelanggan = null;
+
 \$('#selectPelangganStatus').select2({
-  theme: 'bootstrap',
   placeholder: '— Cari Pelanggan —',
   width: '100%',
+  minimumInputLength: 0,
+  ajax: {
+    url: '{$base_url}api/search_pelanggan.php',
+    dataType: 'json',
+    delay: 250,
+    data: function (p) { return { q: p.term || '', status: 'semua', limit: 5 }; },
+    processResults: function (d) { return { results: d.results }; },
+    cache: true,
+  },
 });
 
-function tampilkanStatusSaatIni() {
-  var \$opt = \$('#selectPelangganStatus').find(':selected');
-  var status = \$opt.data('status');
-  var map = { aktif: 'success', nonaktif: 'secondary', isolir: 'danger' };
+function tampilkanStatusSaatIni(data) {
+  var map   = { aktif: 'success', nonaktif: 'secondary', isolir: 'danger' };
   var label = { aktif: 'Aktif', nonaktif: 'Non-aktif', isolir: 'Isolir' };
-  if (status) {
-    \$('#statusSaatIni').html('<span class="badge badge-' + map[status] + '">' + label[status] + '</span>');
-    \$('#selectStatusBaru').val(status);
+  if (data && data.status) {
+    \$('#statusSaatIni').html('<span class="badge badge-' + (map[data.status] || 'secondary') + '">' + (label[data.status] || data.status) + '</span>');
+    \$('#selectStatusBaru').val(data.status);
+    var \$paketOpt = \$('#selectPaketBaru option[value="' + data.paket_id + '"]');
+    \$('#selectPaketBaru').val(\$paketOpt.length ? data.paket_id : '');
   } else {
     \$('#statusSaatIni').html('<span class="text-muted">— Pilih pelanggan dulu —</span>');
   }
-
-  var paketId = \$opt.data('paket-id');
-  var \$paketOpt = \$('#selectPaketBaru option[value="' + paketId + '"]');
-  \$('#selectPaketBaru').val(\$paketOpt.length ? paketId : '');
 }
 
-\$('#selectPelangganStatus').on('change', tampilkanStatusSaatIni);
+\$('#selectPelangganStatus').on('select2:select', function (e) {
+  _selectedPelanggan = e.params.data;
+  tampilkanStatusSaatIni(_selectedPelanggan);
+});
+\$('#selectPelangganStatus').on('select2:clear', function () {
+  _selectedPelanggan = null;
+  tampilkanStatusSaatIni(null);
+});
 
 \$('#formStatus').on('submit', function (e) {
-  var \$opt      = \$('#selectPelangganStatus').find(':selected');
-  var oldStatus  = \$opt.data('status');
-  var newStatus  = \$('#selectStatusBaru').val();
+  var newStatus = \$('#selectStatusBaru').val();
+  var oldStatus = _selectedPelanggan ? _selectedPelanggan.status : null;
+  var nama      = _selectedPelanggan ? _selectedPelanggan.text : '';
   if (newStatus === 'isolir' && oldStatus !== 'isolir' &&
-      !confirm('Yakin isolir pelanggan ' + \$opt.text().trim() + '?')) {
+      !confirm('Yakin isolir pelanggan ' + nama + '?')) {
     e.preventDefault();
   }
 });
