@@ -129,18 +129,9 @@ ob_start();
             <div class="col-md-12">
               <div class="form-group">
                 <label class="form-label">Secret PPP <span class="text-danger">*</span></label>
-                <select name="mikrotik_secrets_id" class="form-control" required>
+                <select name="mikrotik_secrets_id" id="selectSecretTambah" class="form-control" required>
                   <option value="">— Pilih Secret PPP —</option>
-                  <?php foreach ($secrets as $sc): ?>
-                    <option value="<?= $sc['id'] ?>" <?= $sc['used_by_id'] ? 'disabled' : '' ?>>
-                      <?= clean($sc['name']) ?><?= $sc['profile'] ? ' — profile: ' . clean($sc['profile']) : '' ?>
-                      <?= $sc['used_by_id'] ? ' — sudah dipakai: ' . clean($sc['used_by_nama']) : '' ?>
-                    </option>
-                  <?php endforeach; ?>
                 </select>
-                <?php if (!$secrets): ?>
-                  <small class="text-danger">Belum ada data Secret PPP. Sync dulu dari menu Mikrotik &gt; Secret.</small>
-                <?php endif; ?>
               </div>
             </div>
             <div class="col-md-6">
@@ -325,14 +316,23 @@ var paketOptions   = {$paket_json};
 var secretOptions  = {$secrets_json};
 var areaOptions    = {$area_json};
 
-\$('#modalTambah select[name="mikrotik_secrets_id"]').select2({
-  theme: 'bootstrap',
+// Select2 AJAX — Secret PPP modal Tambah
+\$('#selectSecretTambah').select2({
   dropdownParent: \$('#modalTambah'),
   placeholder: '— Pilih Secret PPP —',
   width: '100%',
+  minimumInputLength: 0,
+  ajax: {
+    url: '{$base_url}api/search_mikrotik_secret.php',
+    dataType: 'json',
+    delay: 250,
+    data: function (p) { return { q: p.term || '', pelanggan_id: 0, limit: 5 }; },
+    processResults: function (d) { return { results: d.results }; },
+    cache: true,
+  },
 });
 \$('#modalTambah').on('hidden.bs.modal', function () {
-  \$('#modalTambah select[name="mikrotik_secrets_id"]').val(null).trigger('change');
+  \$('#selectSecretTambah').val(null).trigger('change');
 });
 
 var tabelPelanggan = \$('#tabelPelanggan').DataTable({
@@ -546,17 +546,14 @@ $(document).on('click', '.btn-edit-pelanggan', function () {
       areaHtml += '</optgroup>';
     });
 
+    // Secret PPP: siapkan option pre-select jika sudah ada
     var secretHtml = '<option value="">— Pilih Secret PPP —</option>';
-    $.each(secretOptions, function(i, sc) {
-      var isMine = sc.id == d.mikrotik_secrets_id;
-      var isUsed = sc.used_by_id && !isMine;
-      var label  = esc(sc.name) + (sc.profile ? ' — profile: ' + esc(sc.profile) : '');
-      if (isUsed) label += ' — sudah dipakai: ' + esc(sc.used_by_nama);
-      secretHtml += '<option value="' + sc.id + '"' +
-        (isMine ? ' selected' : '') +
-        (isUsed ? ' disabled' : '') +
-        '>' + label + '</option>';
-    });
+    if (d.mikrotik_secrets_id) {
+      // cari nama secret dari secretOptions untuk pre-fill
+      var curSecret = secretOptions.find(function(sc) { return sc.id == d.mikrotik_secrets_id; });
+      var curLabel  = curSecret ? esc(curSecret.name) + (curSecret.profile ? ' — profile: ' + esc(curSecret.profile) : '') : 'Secret #' + d.mikrotik_secrets_id;
+      secretHtml += '<option value="' + d.mikrotik_secrets_id + '" selected>' + curLabel + '</option>';
+    }
 
     $('#editBody').html(
       '<div class="row">' +
@@ -600,10 +597,21 @@ $(document).on('click', '.btn-edit-pelanggan', function () {
       '</div>'
     );
 
+    // Select2 AJAX — Secret PPP modal Edit
+    var pelId = d.id;
     \$('#editBody select[name="mikrotik_secrets_id"]').select2({
-      theme: 'bootstrap',
       dropdownParent: \$('#modalEdit'),
+      placeholder: '— Pilih Secret PPP —',
       width: '100%',
+      minimumInputLength: 0,
+      ajax: {
+        url: '{$base_url}api/search_mikrotik_secret.php',
+        dataType: 'json',
+        delay: 250,
+        data: function (p) { return { q: p.term || '', pelanggan_id: pelId, limit: 5 }; },
+        processResults: function (d) { return { results: d.results }; },
+        cache: false,
+      },
     });
   });
 });
