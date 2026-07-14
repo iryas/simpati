@@ -77,7 +77,7 @@ var tabelSecret = \$('#tabelSecret').DataTable({
   dom: 'rt<"d-flex justify-content-between align-items-center mt-2 flex-wrap"ip>',
   pageLength: 15,
   order: [[1, 'asc']],
-  language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json' },
+  language: { emptyTable:'Tidak ada data',info:'Menampilkan _START_-_END_ dari _TOTAL_ entri',infoEmpty:'0 entri',infoFiltered:'(dari _MAX_ total)',lengthMenu:'Tampilkan _MENU_ entri',loadingRecords:'Memuat...',processing:'Memproses...',zeroRecords:'Data tidak ditemukan',paginate:{first:'Pertama',last:'Terakhir',next:'›',previous:'‹'} },
   ajax: {
     url: '{$base_url}modules/mikrotik/act.php',
     data: function (d) {
