@@ -583,6 +583,7 @@ body.sidebar-collapsed #content-wrapper { margin-left: 68px; }
   gap: 8px;
   white-space: nowrap;
 }
+.dataTables_processing > div { display: none; }
 .dataTables_processing::before {
   content: '';
   width: 14px;
