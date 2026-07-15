@@ -58,8 +58,10 @@ function mikrotik_secret_set_disabled(string $secretId, bool $disabled): bool
 }
 
 // ── PPP Secret: push profile + disabled sekaligus, dipakai saat status/paket
-//    pelanggan berubah lewat halaman Status Pelanggan ──
-function mikrotik_secret_push_profile(string $secretId, string $profileName, bool $disabled): bool
+//    pelanggan berubah lewat halaman Status Pelanggan.
+//    Jika $secretName diberikan, active connection langsung di-drop supaya
+//    perubahan profile berlaku segera (tanpa tunggu reconnect manual). ──
+function mikrotik_secret_push_profile(string $secretId, string $profileName, bool $disabled, string $secretName = ''): bool
 {
     $api = mikrotik_client();
     if (!$api) return false;
@@ -70,6 +72,22 @@ function mikrotik_secret_push_profile(string $secretId, string $profileName, boo
             'profile'  => $profileName,
             'disabled' => $disabled ? 'yes' : 'no',
         ]);
+
+        if ($secretName !== '') {
+            $active = $api->comm('/ppp/active/print', ['?name' => $secretName]);
+            if (is_array($active)) {
+                foreach ($active as $sess) {
+                    if (!empty($sess['.id'])) {
+                        try {
+                            $api->comm('/ppp/active/remove', ['.id' => $sess['.id']]);
+                        } catch (Throwable $e) {
+                            mikrotik_log('Gagal drop active session (' . $secretName . '): ' . $e->getMessage());
+                        }
+                    }
+                }
+            }
+        }
+
         $api->close();
         return true;
     } catch (Throwable $e) {

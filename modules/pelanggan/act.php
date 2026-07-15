@@ -164,13 +164,13 @@ switch ($action) {
             }
             $disabled = $newStatus === 'nonaktif';
 
-            $secret  = db_row("SELECT ros_id, genieacs_device_id FROM mikrotik_secrets_cache WHERE id = ?", [$row['mikrotik_secrets_id']]);
+            $secret  = db_row("SELECT ros_id, name, genieacs_device_id FROM mikrotik_secrets_cache WHERE id = ?", [$row['mikrotik_secrets_id']]);
             $profile = $targetPaketId
                 ? db_row("SELECT mpc.name FROM paket pk JOIN mikrotik_profiles_cache mpc ON mpc.id = pk.mikrotik_profiles_id WHERE pk.id = ?", [$targetPaketId])
                 : null;
 
             if ($secret && $profile) {
-                $ok = mikrotik_secret_push_profile($secret['ros_id'], $profile['name'], $disabled);
+                $ok = mikrotik_secret_push_profile($secret['ros_id'], $profile['name'], $disabled, $secret['name'] ?? '');
                 if (!$ok) {
                     $mikrotikWarning = ' Namun gagal sync ke Mikrotik (cek koneksi router).';
                 }
@@ -378,7 +378,7 @@ switch ($action) {
             "SELECT pl.id, pl.nama, pl.no_hp, pl.status,
                     pk.nama as nama_paket,
                     py.bulan_tagihan, py.jumlah,
-                    msc.ros_id as mt_ros_id, gdc.device_id as acs_device_id
+                    msc.ros_id as mt_ros_id, msc.name as mt_secret_name, gdc.device_id as acs_device_id
              FROM pelanggan pl
              LEFT JOIN paket pk ON pk.id = pl.paket_id
              LEFT JOIN pembayaran py ON py.pelanggan_id = pl.id
@@ -404,7 +404,7 @@ switch ($action) {
             'created_at'   => date('Y-m-d H:i:s'),
         ]);
         if ($row['mt_ros_id']) {
-            mikrotik_secret_push_profile($row['mt_ros_id'], 'profile-Isolir', false);
+            mikrotik_secret_push_profile($row['mt_ros_id'], 'profile-Isolir', false, $row['mt_secret_name'] ?? '');
         }
         if ($row['acs_device_id']) {
             acs_reboot_device($row['acs_device_id']);
@@ -432,7 +432,7 @@ switch ($action) {
             "SELECT pl.id, pl.nama, pl.no_hp, pl.status,
                     pk.nama as nama_paket,
                     py.bulan_tagihan, py.jumlah,
-                    msc.ros_id as mt_ros_id, gdc.device_id as acs_device_id
+                    msc.ros_id as mt_ros_id, msc.name as mt_secret_name, gdc.device_id as acs_device_id
              FROM pelanggan pl
              LEFT JOIN paket pk ON pk.id = pl.paket_id
              LEFT JOIN pembayaran py ON py.pelanggan_id = pl.id
@@ -456,7 +456,7 @@ switch ($action) {
                 'created_at'   => $now,
             ]);
             if ($r['mt_ros_id']) {
-                mikrotik_secret_push_profile($r['mt_ros_id'], 'profile-Isolir', false);
+                mikrotik_secret_push_profile($r['mt_ros_id'], 'profile-Isolir', false, $r['mt_secret_name'] ?? '');
             }
             if ($r['acs_device_id']) {
                 acs_reboot_device($r['acs_device_id']);
