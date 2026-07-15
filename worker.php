@@ -2,9 +2,11 @@
 // ============================================================
 //  SIMPATI — CLI Worker
 //  Penggunaan:
-//    php worker.php wa:work    → Jalankan antrian WA
-//    php worker.php wa:status  → Lihat status antrian
-//    php worker.php wa:reset   → Reset job gagal ke pending
+//    php worker.php wa:work      → Jalankan antrian WA
+//    php worker.php wa:status    → Lihat status antrian
+//    php worker.php wa:reset     → Reset job gagal ke pending
+//    php worker.php usage:poll   → Polling byte-out & uptime dari Mikrotik (tiap 5 menit)
+//    php worker.php usage:show   → Lihat rekap pemakaian bulan ini
 // ============================================================
 
 if (PHP_SAPI !== 'cli') {
@@ -19,10 +21,137 @@ define('WA_RETRY_DELAYS', [5, 15]); // menit: gagal ke-1 → 5 mnt, gagal ke-2 �
 $cmd = $argv[1] ?? 'help';
 
 switch ($cmd) {
-    case 'wa:work':   wa_work();   break;
-    case 'wa:status': wa_status(); break;
-    case 'wa:reset':  wa_reset();  break;
-    default:          wa_help();   break;
+    case 'wa:work':     wa_work();      break;
+    case 'wa:status':   wa_status();    break;
+    case 'wa:reset':    wa_reset();     break;
+    case 'usage:poll':  usage_poll();   break;
+    case 'usage:show':  usage_show();   break;
+    default:            wa_help();      break;
+}
+
+// ── Usage: polling byte-out & uptime dari Mikrotik ───────────
+function usage_poll(): void {
+    require_once __DIR__ . '/system/mikrotik.php';
+
+    wa_log("Polling /ppp/active dari Mikrotik...");
+
+    $active = mikrotik_fetch_active();
+    if ($active === null) {
+        wa_log("✗ Gagal konek ke Mikrotik. Cek pengaturan router.");
+        return;
+    }
+    if (empty($active)) {
+        wa_log("Tidak ada sesi PPPoE aktif.");
+        return;
+    }
+
+    // Tentukan bulan_tagihan yang sedang berjalan
+    $bulan = bulan_tagihan_sekarang();
+    wa_log("Bulan tagihan: $bulan | Sesi aktif: " . count($active));
+
+    // Map nama secret → pelanggan_id dari DB
+    $secret_map = [];
+    $rows = db_rows(
+        "SELECT msc.name, pl.id as pelanggan_id
+         FROM mikrotik_secrets_cache msc
+         INNER JOIN pelanggan pl ON pl.mikrotik_secrets_id = msc.id
+         WHERE pl.status = 'aktif'"
+    );
+    foreach ($rows as $r) {
+        $secret_map[strtolower($r['name'])] = (int)$r['pelanggan_id'];
+    }
+
+    $updated = 0;
+    $skipped = 0;
+
+    foreach ($active as $sess) {
+        $name       = strtolower($sess['name'] ?? '');
+        $bytes_out  = (int)($sess['bytes-out'] ?? 0);
+        $uptime_str = $sess['uptime'] ?? '0s';
+        $uptime_sec = parse_mikrotik_uptime($uptime_str);
+
+        if (!isset($secret_map[$name])) {
+            $skipped++;
+            continue;
+        }
+
+        $pelanggan_id = $secret_map[$name];
+
+        // Ambil snapshot terakhir
+        $existing = db_row(
+            "SELECT bytes_out, last_bytes_snapshot, uptime_seconds, last_uptime_snapshot
+             FROM usage_pppoe WHERE pelanggan_id = ? AND bulan_tagihan = ?",
+            [$pelanggan_id, $bulan]
+        );
+
+        if ($existing) {
+            // Hitung increment bytes (deteksi reconnect: current < last)
+            $last_bytes  = (int)$existing['last_bytes_snapshot'];
+            $bytes_inc   = $bytes_out >= $last_bytes
+                         ? $bytes_out - $last_bytes
+                         : $bytes_out;
+
+            // Hitung increment uptime
+            $last_uptime = (int)$existing['last_uptime_snapshot'];
+            $uptime_inc  = $uptime_sec >= $last_uptime
+                         ? $uptime_sec - $last_uptime
+                         : $uptime_sec;
+
+            db_update('usage_pppoe', [
+                'bytes_out'            => (int)$existing['bytes_out'] + $bytes_inc,
+                'last_bytes_snapshot'  => $bytes_out,
+                'uptime_seconds'       => (int)$existing['uptime_seconds'] + $uptime_inc,
+                'last_uptime_snapshot' => $uptime_sec,
+                'last_poll_at'         => date('Y-m-d H:i:s'),
+            ], 'pelanggan_id = ? AND bulan_tagihan = ?', [$pelanggan_id, $bulan]);
+        } else {
+            db_insert('usage_pppoe', [
+                'pelanggan_id'         => $pelanggan_id,
+                'bulan_tagihan'        => $bulan,
+                'bytes_out'            => $bytes_out,
+                'last_bytes_snapshot'  => $bytes_out,
+                'uptime_seconds'       => $uptime_sec,
+                'last_uptime_snapshot' => $uptime_sec,
+                'last_poll_at'         => date('Y-m-d H:i:s'),
+            ]);
+        }
+        $updated++;
+    }
+
+    wa_log("✓ Selesai — update: $updated, skip (tidak terdaftar): $skipped");
+}
+
+// ── Usage: tampilkan rekap bulan ini ─────────────────────────
+function usage_show(): void {
+    $bulan = $argv[2] ?? bulan_tagihan_sekarang();
+    $rows  = db_rows(
+        "SELECT pl.nama, up.bytes_out, up.uptime_seconds, up.last_poll_at
+         FROM usage_pppoe up
+         INNER JOIN pelanggan pl ON pl.id = up.pelanggan_id
+         WHERE up.bulan_tagihan = ?
+         ORDER BY up.bytes_out DESC",
+        [$bulan]
+    );
+
+    echo "\n  ╔══════════════════════════════════════════╗\n";
+    echo "  ║   Rekap Pemakaian — Bulan $bulan     ║\n";
+    echo "  ╚══════════════════════════════════════════╝\n\n";
+
+    if (!$rows) {
+        echo "  Belum ada data untuk bulan $bulan.\n\n";
+        return;
+    }
+
+    echo sprintf("  %-20s %12s %20s\n", 'Pelanggan', 'Data', 'Online');
+    echo "  " . str_repeat('─', 55) . "\n";
+    foreach ($rows as $r) {
+        echo sprintf("  %-20s %12s %20s\n",
+            mb_substr($r['nama'], 0, 20),
+            format_bytes((int)$r['bytes_out']),
+            format_uptime_seconds((int)$r['uptime_seconds'])
+        );
+    }
+    echo "\n";
 }
 
 // ── Help ─────────────────────────────────────────────────────
@@ -30,16 +159,20 @@ function wa_help(): void {
     echo <<<TXT
 
   ╔══════════════════════════════════════╗
-  ║   SIMPATI Worker — Antrian WA        ║
+  ║        SIMPATI Worker                ║
   ╚══════════════════════════════════════╝
 
-  Penggunaan:
-    php worker.php wa:work    Jalankan worker (proses antrian WA)
-    php worker.php wa:status  Lihat status antrian
-    php worker.php wa:reset   Reset semua job gagal → pending
+  Antrian WA:
+    php worker.php wa:work      Jalankan worker (proses antrian WA)
+    php worker.php wa:status    Lihat status antrian
+    php worker.php wa:reset     Reset semua job gagal → pending
 
-  Contoh:
-    php worker.php wa:work
+  Pemakaian PPPoE:
+    php worker.php usage:poll   Polling byte-out & uptime dari Mikrotik
+    php worker.php usage:show   Rekap pemakaian bulan ini
+
+  Contoh jalankan polling tiap 5 menit (Windows):
+    php worker.php usage:poll
     php worker.php wa:status
 
 TXT;

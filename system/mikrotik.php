@@ -155,6 +155,20 @@ function mikrotik_sync_profiles(): array
     return ['ok' => true, 'msg' => "Berhasil sync $count PPP profile dari Mikrotik."];
 }
 
+function mikrotik_fetch_active(): ?array
+{
+    $api = mikrotik_client();
+    if (!$api) return null;
+    try {
+        $rows = $api->comm('/ppp/active/print');
+        $api->close();
+        return is_array($rows) ? $rows : [];
+    } catch (Throwable $e) {
+        mikrotik_log('Gagal ambil active sessions: ' . $e->getMessage());
+        return null;
+    }
+}
+
 function mikrotik_is_online(): bool
 {
     $api = mikrotik_client();

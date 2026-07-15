@@ -3,6 +3,43 @@
 //  KAHFINET - Helper Functions (Diperkuat)
 // ============================================================
 
+// ── Usage PPPoE Helpers ───────────────────────────────────────
+function parse_mikrotik_uptime(string $uptime): int {
+    preg_match('/(?:(\d+)w)?(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/', $uptime, $m);
+    return ((int)($m[1] ?? 0) * 604800)
+         + ((int)($m[2] ?? 0) * 86400)
+         + ((int)($m[3] ?? 0) * 3600)
+         + ((int)($m[4] ?? 0) * 60)
+         + (int)($m[5] ?? 0);
+}
+
+function format_bytes(int $bytes): string {
+    if ($bytes >= 1073741824) return number_format($bytes / 1073741824, 2) . ' GB';
+    if ($bytes >= 1048576)    return number_format($bytes / 1048576, 2) . ' MB';
+    if ($bytes >= 1024)       return number_format($bytes / 1024, 2) . ' KB';
+    return $bytes . ' B';
+}
+
+function format_uptime_seconds(int $seconds): string {
+    $hari  = intdiv($seconds, 86400);
+    $jam   = intdiv($seconds % 86400, 3600);
+    $menit = intdiv($seconds % 3600, 60);
+    $parts = [];
+    if ($hari)  $parts[] = $hari . ' hari';
+    if ($jam)   $parts[] = $jam . ' jam';
+    if ($menit && !$hari) $parts[] = $menit . ' menit';
+    return $parts ? implode(' ', $parts) : '< 1 menit';
+}
+
+// Tentukan bulan_tagihan yang sedang berjalan berdasarkan tgl_mulai
+function bulan_tagihan_sekarang(): string {
+    $tgl_mulai = (int)app_setting('tgl_mulai_tagihan', '1');
+    if ((int)date('j') >= $tgl_mulai) {
+        return date('Y-m');
+    }
+    return date('Y-m', strtotime('-1 month'));
+}
+
 // ── Label Periode Tagihan ─────────────────────────────────────
 // Hitung periode "bayar dulu baru pakai" dari bulan_tagihan (Y-m) + tgl_mulai.
 // Hasil: "20 Jul – 19 Agu 2026" atau "20 Des 2025 – 19 Jan 2026"
@@ -286,9 +323,37 @@ function format_pesan_bukti_bayar(array $row): string {
     $struk .= $sep_tebal . "\n";
     $struk .= str_pad('TOTAL BAYAR', 10) . ' : ' . str_pad(rupiah($terbayar), 16, ' ', STR_PAD_LEFT) . "\n";
     $struk .= $sep_tebal . "\n";
+
+    // Pemakaian bulan lalu (bulan_tagihan - 1)
+    $pemakaian_text = '';
+    if (!empty($row['bulan_tagihan']) && !empty($row['pelanggan_id'])) {
+        $bulan_lalu = date('Y-m', strtotime($row['bulan_tagihan'] . '-01 -1 month'));
+        $usage = db_row(
+            "SELECT bytes_out, uptime_seconds FROM usage_pppoe
+             WHERE pelanggan_id = ? AND bulan_tagihan = ?",
+            [(int)$row['pelanggan_id'], $bulan_lalu]
+        );
+        if ($usage && ((int)$usage['bytes_out'] > 0 || (int)$usage['uptime_seconds'] > 0)) {
+            $bln_lalu_label = $bln_indo[(int)date('n', strtotime($bulan_lalu . '-01'))]
+                            . ' ' . date('Y', strtotime($bulan_lalu . '-01'));
+            $struk .= $sep_tipis . "\n";
+            $struk .= "Pemakaian $bln_lalu_label\n";
+            if ((int)$usage['bytes_out'] > 0)
+                $struk .= $baris('Data', format_bytes((int)$usage['bytes_out']));
+            if ((int)$usage['uptime_seconds'] > 0)
+                $struk .= $baris('Online', format_uptime_seconds((int)$usage['uptime_seconds']));
+            $pemakaian_text = "Data: " . format_bytes((int)$usage['bytes_out'])
+                            . "\nOnline: " . format_uptime_seconds((int)$usage['uptime_seconds']);
+        }
+    }
+
     $struk .= "```";
 
-    $result = wa_render('bukti_bayar', ['nama_isp' => $nama_isp, 'struk' => $struk]);
+    $result = wa_render('bukti_bayar', [
+        'nama_isp'  => $nama_isp,
+        'struk'     => $struk,
+        'pemakaian' => $pemakaian_text,
+    ]);
 
     // Fallback jika template belum ada di DB
     if (!$result) {
