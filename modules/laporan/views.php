@@ -238,6 +238,7 @@ ob_start();
             <th>Jumlah</th>
             <th>Potongan</th>
             <th>Terbayar</th>
+            <th>Metode</th>
             <th>Tgl Bayar</th>
             <th>Tipe</th>
           </tr>
@@ -267,13 +268,24 @@ ob_start();
                   <?php endif; ?>
                 </td>
                 <td><?= $d['status'] === 'lunas' ? rupiah((int)$d['terbayar']) : '<span class="text-muted">—</span>' ?></td>
+                <td>
+                  <?php if ($d['status'] === 'lunas'): ?>
+                    <?php if (($d['metode'] ?? 'tunai') === 'transfer'): ?>
+                      <span class="badge badge-info">Transfer</span>
+                    <?php else: ?>
+                      <span class="badge badge-secondary">Tunai</span>
+                    <?php endif; ?>
+                  <?php else: ?>
+                    <span class="text-muted">—</span>
+                  <?php endif; ?>
+                </td>
                 <td><?= $d['tgl_bayar'] ? tgl_indo($d['tgl_bayar']) : '<span class="text-muted">—</span>' ?></td>
                 <td><?= $tipe ?></td>
               </tr>
             <?php endforeach;
           else: ?>
             <tr>
-              <td colspan="8" class="text-center text-muted py-4">Tidak ada data tagihan pada bulan ini.</td>
+              <td colspan="9" class="text-center text-muted py-4">Tidak ada data tagihan pada bulan ini.</td>
             </tr>
           <?php endif; ?>
         </tbody>

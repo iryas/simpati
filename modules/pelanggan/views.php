@@ -413,13 +413,14 @@ $(document).on('click', '.btn-detail-pelanggan', function () {
             '<td>' + rupiahFmtPl(r.jumlah) + '</td>' +
             '<td>' + (r.status === 'lunas' ? rupiahFmtPl(r.terbayar) : '<span class="text-muted">—</span>') + '</td>' +
             '<td>' + (parseInt(r.potongan) > 0 ? r.potongan + ' hari' : '<span class="text-muted">—</span>') + '</td>' +
+            '<td>' + (r.status === 'lunas' ? (r.metode === 'transfer' ? '<span class="badge badge-info">Transfer</span>' : '<span class="badge badge-secondary">Tunai</span>') : '<span class="text-muted">—</span>') + '</td>' +
             '<td>' + tglIndoPl(r.tgl_bayar) + '</td>' +
             '<td>' + esc(r.nama_kasir || '—') + '</td>' +
             '<td>' + badgeStatusPl(r.status) + '</td>' +
           '</tr>';
       });
     } else {
-      riwayatRows = '<tr><td colspan="7" class="text-center text-muted py-4">Belum ada riwayat pembayaran.</td></tr>';
+      riwayatRows = '<tr><td colspan="8" class="text-center text-muted py-4">Belum ada riwayat pembayaran.</td></tr>';
     }
 
     var statusLogRows = '';
@@ -476,7 +477,7 @@ $(document).on('click', '.btn-detail-pelanggan', function () {
           '<div class="table-responsive">' +
             '<table class="table table-sm table-hover">' +
               '<thead><tr>' +
-                '<th>Bulan Tagihan</th><th>Jumlah</th><th>Terbayar</th><th>Potongan</th><th>Tgl Bayar</th><th>Kasir</th><th>Status</th>' +
+                '<th>Bulan Tagihan</th><th>Jumlah</th><th>Terbayar</th><th>Potongan</th><th>Metode</th><th>Tgl Bayar</th><th>Kasir</th><th>Status</th>' +
               '</tr></thead>' +
               '<tbody>' + riwayatRows + '</tbody>' +
             '</table>' +

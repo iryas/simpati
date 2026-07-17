@@ -325,6 +325,7 @@ ob_start();
                 <tr>
                   <th>Pelanggan</th>
                   <th>Jumlah</th>
+                  <th>Metode</th>
                   <th>Tgl Bayar</th>
                   <th>Ket</th>
                 </tr>
@@ -342,6 +343,13 @@ ob_start();
                       <?= rupiah((int)$p['terbayar'] ?: (int)$p['jumlah']) ?>
                       <?php if ((int)$p['potongan'] > 0): ?>
                         <br><small class="text-danger">- <?= rupiah((int)$p['jumlah'] - (int)$p['terbayar']) ?></small>
+                      <?php endif; ?>
+                    </td>
+                    <td>
+                      <?php if (($p['metode'] ?? 'tunai') === 'transfer'): ?>
+                        <span class="badge badge-info">Transfer</span>
+                      <?php else: ?>
+                        <span class="badge badge-secondary">Tunai</span>
                       <?php endif; ?>
                     </td>
                     <td><?= tgl_indo($p['tgl_bayar']) ?></td>
