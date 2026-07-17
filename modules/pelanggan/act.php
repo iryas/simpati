@@ -409,10 +409,6 @@ switch ($action) {
         if ($row['acs_device_id']) {
             acs_reboot_device($row['acs_device_id']);
         }
-        if (!empty($row['no_hp'])) {
-            $pesan_isolir = format_pesan_isolir($row);
-            if ($pesan_isolir) wa_queue_push($row['no_hp'], $pesan_isolir, 'isolir');
-        }
         json_res(true, 'Pelanggan ' . $row['nama'] . ' berhasil diisolir.');
 
     // ── ISOLIR MASSAL ─────────────────────────────────────────
@@ -461,13 +457,9 @@ switch ($action) {
             if ($r['acs_device_id']) {
                 acs_reboot_device($r['acs_device_id']);
             }
-            if (!empty($r['no_hp'])) {
-                $pesan_isolir = format_pesan_isolir($r);
-                if ($pesan_isolir) wa_queue_push($r['no_hp'], $pesan_isolir, 'isolir');
-            }
             $diproses++;
         }
-        json_res(true, "$diproses pelanggan berhasil diisolir. WA dijadwalkan via worker.");
+        json_res(true, "$diproses pelanggan berhasil diisolir.");
 
     // ── GET JSON (untuk modal edit) ───────────────────────────
     case 'get_json':
