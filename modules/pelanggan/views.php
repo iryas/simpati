@@ -384,7 +384,7 @@ function rupiahFmtPl(n) {
 function tglIndoPl(s) {
   if (!s) return '—';
   var bln = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
-  var p = s.split('-');
+  var p = s.substring(0, 10).split('-');
   return p[2] + ' ' + bln[parseInt(p[1])] + ' ' + p[0];
 }
 function badgeStatusPl(status) {
