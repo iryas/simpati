@@ -292,7 +292,7 @@ function format_pesan_bukti_bayar(array $row): string {
 
     $pot_text = $potongan > 0
         ? '- ' . rupiah($nominal_pot) . ' (' . $potongan . 'h)'
-        : '—';
+        : rupiah(0) . ' (-)';
 
     $paket     = trim($row['nama_paket'] ?? '-');
     $sep_tebal = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
