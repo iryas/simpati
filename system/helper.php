@@ -309,10 +309,13 @@ function format_pesan_bukti_bayar(array $row): string {
     };
 
     // Bangun blok struk monospace
+    $metode_label = ($row['metode'] ?? 'tunai') === 'transfer' ? 'Transfer' : 'Tunai';
+
     $struk  = "```\n";
     $struk .= $sep_tebal . "\n";
     $struk .= $baris('No. Bayar',  $no_bayar);
     $struk .= $baris('Tgl. Bayar', $tgl_bayar);
+    $struk .= $baris('Metode',     $metode_label);
     $struk .= $sep_tipis . "\n";
     $struk .= $baris('Pelanggan',  $row['nama_pelanggan']);
     $struk .= $baris('Paket',      $paket);

@@ -29,9 +29,10 @@ switch ($action) {
         $start  = max(0, (int)get('start', 0));
         $length = (int)get('length', 15);
         $length = $length > 0 ? min($length, 100) : 15;
-        $search = trim(get('q'));
-        $status = get('status_filter');
-        $bulan  = get('bulan');
+        $search        = trim(get('q'));
+        $status        = get('status_filter');
+        $bulan         = get('bulan');
+        $metode_filter = get('metode_filter');
 
         $where  = '1=1';
         $params = [];
@@ -49,8 +50,12 @@ switch ($action) {
             $where   .= ' AND py.bulan_tagihan = ?';
             $params[] = $bulan;
         }
+        if (in_array($metode_filter, ['tunai', 'transfer'])) {
+            $where   .= ' AND py.metode = ?';
+            $params[] = $metode_filter;
+        }
 
-        $orderCols = [3 => 'py.jumlah', 4 => 'py.terbayar', 5 => 'py.potongan', 6 => 'py.tgl_bayar', 8 => 'py.status'];
+        $orderCols = [3 => 'py.jumlah', 4 => 'py.terbayar', 5 => 'py.potongan', 6 => 'py.tgl_bayar', 9 => 'py.status'];
         $orderCol  = (int)($_GET['order'][0]['column'] ?? 0);
         $orderDir  = strtolower($_GET['order'][0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
         $orderBy   = $orderCols[$orderCol] ?? 'py.id';
@@ -149,6 +154,10 @@ switch ($action) {
                 }
             }
 
+            $metodeLabel = ($r['metode'] ?? 'tunai') === 'transfer'
+                ? '<span class="badge badge-info">Transfer</span>'
+                : '<span class="badge badge-secondary">Tunai</span>';
+
             $data[] = [
                 'no'        => $start + $i + 1,
                 'checkbox'  => $checkboxCell,
@@ -158,6 +167,7 @@ switch ($action) {
                 'potongan'  => $potonganCell,
                 'tgl_bayar' => $r['tgl_bayar'] ? tgl_indo($r['tgl_bayar']) : '<span class="text-muted">—</span>',
                 'kasir'     => clean($r['nama_kasir'] ?? '—'),
+                'metode'    => $r['status'] === 'lunas' ? $metodeLabel : '<span class="text-muted">—</span>',
                 'status'    => badge_status($r['status'], $r['bulan_tagihan']),
                 'wa'        => $waCell,
                 'aksi'      => $aksi,
@@ -214,6 +224,8 @@ switch ($action) {
             [$pelanggan_id, $bulan_tagihan]
         );
 
+        $metode = in_array(post('metode'), ['tunai', 'transfer']) ? post('metode') : 'tunai';
+
         $data = [
             'pelanggan_id'  => $pelanggan_id,
             'paket_id'      => $pl['paket_id'],
@@ -224,6 +236,7 @@ switch ($action) {
             'status'        => $status,
             'potongan'      => $potongan,
             'terbayar'      => $terbayar,
+            'metode'        => $metode,
             'keterangan'    => trim(post('keterangan')),
         ];
 
@@ -393,12 +406,15 @@ switch ($action) {
         $ha       = $jumlah / 30;
         $terbayar = (int)round($jumlah - ($ha * $potongan));
 
+        $metode = in_array(post('metode'), ['tunai', 'transfer']) ? post('metode') : 'tunai';
+
         db_update('pembayaran', [
             'status'    => 'lunas',
             'tgl_bayar' => date('Y-m-d H:i:s'),
             'kasir_id'  => $petugasId,
             'potongan'  => $potongan,
             'terbayar'  => $terbayar,
+            'metode'    => $metode,
         ], 'id = ?', [$id]);
 
         // Kirim bukti pembayaran via WhatsApp
@@ -502,12 +518,15 @@ switch ($action) {
         $ha       = $jumlah / 30;
         $terbayar = (int)round($jumlah - ($ha * $potongan));
 
+        $metode = in_array(post('metode'), ['tunai', 'transfer']) ? post('metode') : $row['metode'];
+
         db_update('pembayaran', [
             'jumlah'     => $jumlah,
             'potongan'   => $potongan,
             'terbayar'   => $terbayar,
             'tgl_bayar'  => post('tgl_bayar') ?: $row['tgl_bayar'],
             'kasir_id'   => $petugasId,
+            'metode'     => $metode,
             'keterangan' => trim(post('keterangan')),
         ], 'id = ?', [$id]);
 

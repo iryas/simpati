@@ -8,6 +8,7 @@ auth_role([ROLE_ADMIN, ROLE_KEUANGAN]);
 
 $search = get('search');
 $status = get('status');
+$metode = get('metode');
 $bulan  = get('bulan', date('Y-m'));
 
 $pelanggans = db_rows("SELECT id, nama, no_hp, paket_id FROM pelanggan WHERE status='aktif' ORDER BY nama");
@@ -110,6 +111,11 @@ $tung = db_row(
         <option value="lunas" <?= $status==='lunas'?'selected':'' ?>>Lunas</option>
         <option value="belum" <?= $status==='belum'?'selected':'' ?>>Belum Bayar</option>
       </select>
+      <select name="metode" class="form-control form-control-sm">
+        <option value="">Semua Metode</option>
+        <option value="tunai"    <?= $metode==='tunai'   ?'selected':'' ?>>Tunai</option>
+        <option value="transfer" <?= $metode==='transfer'?'selected':'' ?>>Transfer</option>
+      </select>
       <button type="submit" class="btn btn-primary btn-sm">
         <i class="fas fa-search mr-1"></i>Filter
       </button>
@@ -153,6 +159,7 @@ $tung = db_row(
             <th>Potongan</th>
             <th>Tgl Bayar</th>
             <th>Kasir</th>
+            <th>Metode</th>
             <th>Status</th>
             <th><i class="fab fa-whatsapp"></i> WA</th>
             <th>Aksi</th>
@@ -216,6 +223,13 @@ $tung = db_row(
             <input type="date" name="tgl_bayar" id="inputTglBayar" class="form-control" value="<?= date('Y-m-d') ?>">
           </div>
           <div class="form-group">
+            <label class="form-label">Metode Pembayaran</label>
+            <select name="metode" class="form-control">
+              <option value="tunai">Tunai</option>
+              <option value="transfer">Transfer</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label class="form-label">Petugas/Kasir <span class="text-danger">*</span></label>
             <select name="kasir_id" class="form-control" required>
               <?php foreach ($petugas as $p): ?>
@@ -273,6 +287,13 @@ $tung = db_row(
           <div class="form-group">
             <label class="form-label">Terbayar (Rp)</label>
             <input type="text" name="terbayar_display" class="form-control" id="bayar_terbayar_display">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Metode Pembayaran</label>
+            <select name="metode" id="bayar_metode" class="form-control">
+              <option value="tunai">Tunai</option>
+              <option value="transfer">Transfer</option>
+            </select>
           </div>
           <div class="form-group">
             <label class="form-label">Petugas/Kasir <span class="text-danger">*</span></label>
@@ -450,6 +471,7 @@ $petugas_json = json_encode(array_map(fn($p) => ['id' => $p['id'], 'nama' => $p[
 $bulan_json   = json_encode($bulan);
 $search_json  = json_encode($search);
 $status_json  = json_encode($status);
+$metode_json  = json_encode($metode);
 $today        = date('Y-m-d');
 
 $extra_js = <<<HTML
@@ -469,6 +491,7 @@ var tabelPembayaran = \$('#tabelPembayaran').DataTable({
       d.bulan         = {$bulan_json};
       d.q             = {$search_json};
       d.status_filter = {$status_json};
+      d.metode_filter = {$metode_json};
     }
   },
   columns: [
@@ -480,6 +503,7 @@ var tabelPembayaran = \$('#tabelPembayaran').DataTable({
     { data: 'potongan' },
     { data: 'tgl_bayar' },
     { data: 'kasir', orderable: false },
+    { data: 'metode', orderable: false },
     { data: 'status' },
     { data: 'wa', orderable: false },
     { data: 'aksi', orderable: false },
@@ -691,6 +715,13 @@ function hitungTerbayarEdit() {
       '<div class="form-group">' +
         '<label class="form-label">Tanggal Bayar</label>' +
         '<input type="date" name="tgl_bayar" class="form-control" value="' + (d.tgl_bayar || '') + '">' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label class="form-label">Metode Pembayaran</label>' +
+        '<select name="metode" class="form-control">' +
+          '<option value="tunai"' + (d.metode === 'tunai' ? ' selected' : '') + '>Tunai</option>' +
+          '<option value="transfer"' + (d.metode === 'transfer' ? ' selected' : '') + '>Transfer</option>' +
+        '</select>' +
       '</div>' +
       '<div class="form-group">' +
         '<label class="form-label">Petugas/Kasir <span class="text-danger">*</span></label>' +
