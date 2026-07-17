@@ -150,27 +150,26 @@ switch ($action) {
 
         // ── Push profile + disabled ke secret PPP di Mikrotik ──
         // aktif    -> profile paket asli, disabled=no
-        // isolir   -> profile "Isolir Pelanggan" (tetap konek, dilambatin), disabled=no
-        // nonaktif -> profile "Isolir Pelanggan", disabled=yes (akun dimatikan total)
+        // isolir   -> app_setting mikrotik_profile_isolir, disabled=no
+        // nonaktif -> app_setting mikrotik_profile_isolir, disabled=yes (akun dimatikan total)
         $mikrotikWarning = '';
         if (($statusChanged || $paketChanged) && $row['mikrotik_secrets_id']) {
             $finalPaketId = $paketChanged ? $newPaketId : (int)$row['paket_id'];
+            $disabled     = $newStatus === 'nonaktif';
+
+            $secret = db_row("SELECT ros_id, name, genieacs_device_id FROM mikrotik_secrets_cache WHERE id = ?", [$row['mikrotik_secrets_id']]);
 
             if ($newStatus === 'aktif') {
-                $targetPaketId = $finalPaketId;
+                $profileRow  = $finalPaketId
+                    ? db_row("SELECT mpc.name FROM paket pk JOIN mikrotik_profiles_cache mpc ON mpc.id = pk.mikrotik_profiles_id WHERE pk.id = ?", [$finalPaketId])
+                    : null;
+                $profileName = $profileRow['name'] ?? null;
             } else {
-                $isolirPaket   = db_row("SELECT id FROM paket WHERE nama = 'Isolir Pelanggan' LIMIT 1");
-                $targetPaketId = $isolirPaket['id'] ?? null;
+                $profileName = app_setting('mikrotik_profile_isolir', 'profile-Isolir2');
             }
-            $disabled = $newStatus === 'nonaktif';
 
-            $secret  = db_row("SELECT ros_id, name, genieacs_device_id FROM mikrotik_secrets_cache WHERE id = ?", [$row['mikrotik_secrets_id']]);
-            $profile = $targetPaketId
-                ? db_row("SELECT mpc.name FROM paket pk JOIN mikrotik_profiles_cache mpc ON mpc.id = pk.mikrotik_profiles_id WHERE pk.id = ?", [$targetPaketId])
-                : null;
-
-            if ($secret && $profile) {
-                $ok = mikrotik_secret_push_profile($secret['ros_id'], $profile['name'], $disabled, $secret['name'] ?? '');
+            if ($secret && $profileName) {
+                $ok = mikrotik_secret_push_profile($secret['ros_id'], $profileName, $disabled, $secret['name'] ?? '');
                 if (!$ok) {
                     $mikrotikWarning = ' Namun gagal sync ke Mikrotik (cek koneksi router).';
                 }
