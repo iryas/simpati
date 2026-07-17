@@ -281,7 +281,7 @@ function format_pesan_bukti_bayar(array $row): string {
 
     $bln_indo  = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
     $ts_bayar  = strtotime($row['tgl_bayar'] ?? 'now');
-    $tgl_bayar = date('d/m/Y', $ts_bayar) . ' ' . date('H:i', $ts_bayar);
+    $tgl_bayar = date('d/m/Y', $ts_bayar);
     $no_bayar  = date('Y', $ts_bayar) . '-' . date('dm', $ts_bayar) . '-' . str_pad((string)$row['id'], 3, '0', STR_PAD_LEFT);
 
     $periode = '';
@@ -292,7 +292,7 @@ function format_pesan_bukti_bayar(array $row): string {
 
     $pot_text = $potongan > 0
         ? '- ' . rupiah($nominal_pot) . ' (' . $potongan . 'h)'
-        : rupiah(0) . ' (tidak ada potongan)';
+        : '—';
 
     $paket     = trim($row['nama_paket'] ?? '-');
     $sep_tebal = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
