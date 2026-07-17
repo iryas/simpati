@@ -714,7 +714,7 @@ function hitungTerbayarEdit() {
       '</div>' +
       '<div class="form-group">' +
         '<label class="form-label">Tanggal Bayar</label>' +
-        '<input type="date" name="tgl_bayar" class="form-control" value="' + (d.tgl_bayar || '') + '">' +
+        '<input type="date" name="tgl_bayar" class="form-control" value="' + (d.tgl_bayar ? d.tgl_bayar.substring(0, 10) : '') + '">' +
       '</div>' +
       '<div class="form-group">' +
         '<label class="form-label">Metode Pembayaran</label>' +
