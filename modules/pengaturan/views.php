@@ -6,10 +6,11 @@ require_once __DIR__ . '/../../system/init.php';
 auth_check();
 auth_role([ROLE_ADMIN]);
 
-$tgl_mulai           = app_setting('tgl_mulai_tagihan', '1');
-$nama_isp            = app_setting('nama_isp', 'KahfiNet');
-$no_cs               = app_setting('no_cs', '');
-$grace_period_isolir = app_setting('grace_period_isolir', '3');
+$tgl_mulai              = app_setting('tgl_mulai_tagihan', '1');
+$nama_isp               = app_setting('nama_isp', 'KahfiNet');
+$no_cs                  = app_setting('no_cs', '');
+$grace_period_isolir    = app_setting('grace_period_isolir', '3');
+$mikrotik_profile_isolir = app_setting('mikrotik_profile_isolir', 'profile-Isolir2');
 $wablas_aktif        = app_setting('wablas_aktif', '0');
 $wa_gateway          = app_setting('wa_gateway', 'wablas');
 $wablas_token        = app_setting('wablas_token', '');
@@ -105,6 +106,14 @@ ob_start();
               <strong><?= (int)$grace_period_isolir ?></strong> hari =
               isolir mulai tgl <strong><?= (int)$tgl_mulai + (int)$grace_period_isolir ?></strong>.
             </small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label font-weight-bold">Nama Profile Isolir (Mikrotik)</label>
+            <input type="text" name="mikrotik_profile_isolir" class="form-control"
+                   value="<?= clean($mikrotik_profile_isolir) ?>" maxlength="100"
+                   placeholder="Contoh: profile-Isolir2">
+            <small class="text-muted">Nama PPP Profile di Mikrotik yang dipakai saat pelanggan diisolir.</small>
           </div>
 
           <button type="submit" class="btn btn-primary btn-sm">

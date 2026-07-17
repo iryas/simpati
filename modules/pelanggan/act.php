@@ -404,7 +404,7 @@ switch ($action) {
             'created_at'   => date('Y-m-d H:i:s'),
         ]);
         if ($row['mt_ros_id']) {
-            mikrotik_secret_push_profile($row['mt_ros_id'], 'profile-Isolir', false, $row['mt_secret_name'] ?? '');
+            mikrotik_secret_push_profile($row['mt_ros_id'], app_setting('mikrotik_profile_isolir', 'profile-Isolir2'), false, $row['mt_secret_name'] ?? '');
         }
         if ($row['acs_device_id']) {
             acs_reboot_device($row['acs_device_id']);
@@ -456,7 +456,7 @@ switch ($action) {
                 'created_at'   => $now,
             ]);
             if ($r['mt_ros_id']) {
-                mikrotik_secret_push_profile($r['mt_ros_id'], 'profile-Isolir', false, $r['mt_secret_name'] ?? '');
+                mikrotik_secret_push_profile($r['mt_ros_id'], app_setting('mikrotik_profile_isolir', 'profile-Isolir2'), false, $r['mt_secret_name'] ?? '');
             }
             if ($r['acs_device_id']) {
                 acs_reboot_device($r['acs_device_id']);

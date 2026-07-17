@@ -32,11 +32,15 @@ switch ($action) {
         $grace  = max(0, min(30, (int)post('grace_period_isolir')));
         $no_cs  = mb_substr(trim(post('no_cs')), 0, 20);
 
+        $profile_isolir = mb_substr(trim(post('mikrotik_profile_isolir')), 0, 100);
+        if ($profile_isolir === '') $profile_isolir = 'profile-Isolir2';
+
         $updates = [
-            'tgl_mulai_tagihan'   => (string)$tgl,
-            'nama_isp'            => $nama_isp,
-            'grace_period_isolir' => (string)$grace,
-            'no_cs'               => $no_cs,
+            'tgl_mulai_tagihan'      => (string)$tgl,
+            'nama_isp'               => $nama_isp,
+            'grace_period_isolir'    => (string)$grace,
+            'no_cs'                  => $no_cs,
+            'mikrotik_profile_isolir' => $profile_isolir,
         ];
 
         foreach ($updates as $key => $val) {
