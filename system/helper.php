@@ -327,28 +327,7 @@ function format_pesan_bukti_bayar(array $row): string {
     $struk .= str_pad('TOTAL BAYAR', 10) . ' : ' . str_pad(rupiah($terbayar), 16, ' ', STR_PAD_LEFT) . "\n";
     $struk .= $sep_tebal . "\n";
 
-    // Pemakaian bulan lalu (bulan_tagihan - 1)
     $pemakaian_text = '';
-    if (!empty($row['bulan_tagihan']) && !empty($row['pelanggan_id'])) {
-        $bulan_lalu = date('Y-m', strtotime($row['bulan_tagihan'] . '-01 -1 month'));
-        $usage = db_row(
-            "SELECT bytes_out, uptime_seconds FROM usage_pppoe
-             WHERE pelanggan_id = ? AND bulan_tagihan = ?",
-            [(int)$row['pelanggan_id'], $bulan_lalu]
-        );
-        if ($usage && ((int)$usage['bytes_out'] > 0 || (int)$usage['uptime_seconds'] > 0)) {
-            $bln_lalu_label = $bln_indo[(int)date('n', strtotime($bulan_lalu . '-01'))]
-                            . ' ' . date('Y', strtotime($bulan_lalu . '-01'));
-            $struk .= $sep_tipis . "\n";
-            $struk .= "Pemakaian $bln_lalu_label\n";
-            if ((int)$usage['bytes_out'] > 0)
-                $struk .= $baris('Data', format_bytes((int)$usage['bytes_out']));
-            if ((int)$usage['uptime_seconds'] > 0)
-                $struk .= $baris('Online', format_uptime_seconds((int)$usage['uptime_seconds']));
-            $pemakaian_text = "Data: " . format_bytes((int)$usage['bytes_out'])
-                            . "\nOnline: " . format_uptime_seconds((int)$usage['uptime_seconds']);
-        }
-    }
 
     $struk .= "```";
 
