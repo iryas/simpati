@@ -16,9 +16,6 @@ foreach ($riwayat as $r) {
     $grouped[$th][] = $r;
 }
 
-$total_lunas = 0;
-foreach ($riwayat as $r) $total_lunas += (int)$r['terbayar'];
-
 $page_title = 'Riwayat Pembayaran';
 $page_sub   = count($riwayat) . ' pembayaran lunas';
 $active     = 'tagihan';
@@ -34,14 +31,6 @@ ob_start();
     </div>
   </div>
 <?php else: ?>
-
-  <div class="stat-row" style="grid-template-columns:1fr;">
-    <div class="stat">
-      <div class="s-ic ic-green"><i class="fas fa-check-double"></i></div>
-      <div class="s-val"><?= rupiah($total_lunas) ?></div>
-      <div class="s-lbl">Total sudah dibayar (<?= count($riwayat) ?> transaksi terakhir)</div>
-    </div>
-  </div>
 
   <?php foreach ($grouped as $tahun => $rows): ?>
     <div class="section-title">Tahun <?= clean((string)$tahun) ?></div>
