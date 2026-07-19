@@ -86,6 +86,26 @@ function portal_usage_riwayat(int $pid, int $bulan = 6): array {
     );
 }
 
+// Pengumuman aktif untuk portal (yang disematkan dulu, lalu terbaru).
+function portal_pengumuman(int $limit = 20): array {
+    $limit = max(1, min(50, $limit));
+    return db_rows(
+        "SELECT * FROM pengumuman WHERE aktif = 1
+         ORDER BY pinned DESC, created_at DESC, id DESC
+         LIMIT " . (int)$limit
+    );
+}
+
+// Meta tampilan tipe pengumuman: [warna, ikon, label].
+function pengumuman_meta(string $t): array {
+    return [
+        'info'        => ['#0ea5e9', 'fa-info-circle',        'Info'],
+        'penting'     => ['#ef4444', 'fa-exclamation-circle', 'Penting'],
+        'promo'       => ['#16a34a', 'fa-tags',               'Promo'],
+        'maintenance' => ['#f59e0b', 'fa-tools',              'Pemeliharaan'],
+    ][$t] ?? ['#64748b', 'fa-bullhorn', 'Info'];
+}
+
 // Label ramah untuk kategori tiket.
 function tiket_kategori_label(string $k): string {
     return [

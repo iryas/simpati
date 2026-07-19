@@ -9,9 +9,10 @@ $me    = portal_current();
 $pid   = (int)$me['id'];
 $bulan = bulan_tagihan_sekarang();
 
-$tagihan   = portal_tagihan_kini($pid);
-$tunggakan = portal_tunggakan($pid);
-$usage     = portal_usage($pid, $bulan);
+$tagihan    = portal_tagihan_kini($pid);
+$tunggakan  = portal_tunggakan($pid);
+$usage      = portal_usage($pid, $bulan);
+$pengumuman = portal_pengumuman(3);
 
 // Nominal & status tagihan berjalan
 $tg_nominal = $tagihan ? portal_nominal((int)$tagihan['jumlah'], (int)$tagihan['potongan']) : 0;
@@ -64,6 +65,30 @@ ob_start();
 </a>
 <?php endif; ?>
 
+<!-- Info & Pengumuman terbaru -->
+<?php if (!empty($pengumuman)): ?>
+  <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+    <span>Info &amp; Pengumuman</span>
+    <a href="<?= PORTAL_URL ?>info.php" style="font-size:12px;font-weight:600;color:#f59e0b;text-decoration:none;">Lihat semua ›</a>
+  </div>
+  <?php foreach (array_slice($pengumuman, 0, 2) as $p): ?>
+    <?php [$warna, $ikon, $tlabel] = pengumuman_meta((string)$p['tipe']); ?>
+    <a href="<?= PORTAL_URL ?>info.php" class="pcard" style="display:block;border-left:4px solid <?= $warna ?>;">
+      <div class="irow" style="border:0;padding:2px;">
+        <div class="ir-ic" style="background:<?= $warna ?>1a;color:<?= $warna ?>;"><i class="fas <?= $ikon ?>"></i></div>
+        <div class="ir-main">
+          <div class="ir-t">
+            <?php if ((int)$p['pinned']): ?><i class="fas fa-thumbtack" style="font-size:10px;color:<?= $warna ?>;"></i> <?php endif; ?>
+            <?= clean((string)$p['judul']) ?>
+          </div>
+          <div class="ir-s"><?= clean(mb_strimwidth((string)$p['isi'], 0, 62, '…')) ?></div>
+        </div>
+        <i class="fas fa-chevron-right text-muted2"></i>
+      </div>
+    </a>
+  <?php endforeach; ?>
+<?php endif; ?>
+
 <!-- Status langganan & paket -->
 <div class="stat-row">
   <div class="stat">
@@ -102,6 +127,11 @@ ob_start();
 <!-- Menu cepat -->
 <div class="section-title">Menu cepat</div>
 <div class="pcard tight">
+  <a href="<?= PORTAL_URL ?>info.php" class="irow">
+    <div class="ir-ic ic-blue"><i class="fas fa-bullhorn"></i></div>
+    <div class="ir-main"><div class="ir-t">Info &amp; Pengumuman</div><div class="ir-s">Kabar &amp; pemberitahuan terbaru</div></div>
+    <i class="fas fa-chevron-right text-muted2"></i>
+  </a>
   <a href="<?= PORTAL_URL ?>riwayat.php" class="irow">
     <div class="ir-ic ic-green"><i class="fas fa-receipt"></i></div>
     <div class="ir-main"><div class="ir-t">Riwayat pembayaran</div><div class="ir-s">Lihat tagihan yang sudah lunas</div></div>

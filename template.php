@@ -194,6 +194,13 @@ $user = current_user();
             <?php endif; ?>
           </a>
         </li>
+        <?php if ($user['role'] === ROLE_ADMIN): ?>
+        <li class="nav-item <?= ($active_menu ?? '') === 'pengumuman' ? 'active' : '' ?>">
+          <a href="<?= BASE_URL ?>modules/pengumuman/views.php">
+            <i class="fas fa-bullhorn"></i><span>Pengumuman</span>
+          </a>
+        </li>
+        <?php endif; ?>
       <?php endif; ?>
 
       <?php if ($user['role'] === ROLE_ADMIN): ?>

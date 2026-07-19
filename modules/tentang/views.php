@@ -10,6 +10,19 @@ $active_menu = 'tentang';
 
 $changelog = [
     [
+        'versi'    => '1.10.0',
+        'tanggal'  => '19 Jul 2026',
+        'label'    => 'Info & Pengumuman',
+        'warna'    => 'primary',
+        'sections' => [
+            'Ditambahkan' => [
+                'Modul Pengumuman (admin): kelola pengumuman dengan tipe Info/Penting/Promo/Pemeliharaan, opsi Aktif-Nonaktif, dan Sematkan di atas. Menu "Pengumuman" di grup LAYANAN',
+                'Portal Pelanggan: banner pengumuman terbaru di beranda (ikon & warna sesuai tipe) + halaman "Info & Pengumuman" berisi semua pengumuman aktif',
+                'Migrasi 016: tabel pengumuman',
+            ],
+        ],
+    ],
+    [
         'versi'    => '1.9.0',
         'tanggal'  => '19 Jul 2026',
         'label'    => 'Portal Pelanggan (PWA)',
