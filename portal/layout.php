@@ -18,6 +18,7 @@ $nav = [
     ['key' => 'tagihan', 'url' => 'tagihan.php', 'ic' => 'fa-file-invoice-dollar', 'label' => 'Tagihan'],
     ['key' => 'usage',   'url' => 'usage.php',   'ic' => 'fa-chart-line',          'label' => 'Pemakaian'],
     ['key' => 'lapor',   'url' => 'lapor.php',   'ic' => 'fa-headset',             'label' => 'Lapor'],
+    ['key' => 'info',    'url' => 'info.php',    'ic' => 'fa-bullhorn',            'label' => 'Info'],
     ['key' => 'akun',    'url' => 'profil.php',  'ic' => 'fa-user',                'label' => 'Akun'],
 ];
 ?>

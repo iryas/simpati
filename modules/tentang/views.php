@@ -17,7 +17,7 @@ $changelog = [
         'sections' => [
             'Ditambahkan' => [
                 'Modul Pengumuman (admin): kelola pengumuman dengan tipe Info/Penting/Promo/Pemeliharaan, opsi Aktif-Nonaktif, dan Sematkan di atas. Menu "Pengumuman" di grup LAYANAN',
-                'Portal Pelanggan: banner pengumuman terbaru di beranda (ikon & warna sesuai tipe) + halaman "Info & Pengumuman" berisi semua pengumuman aktif',
+                'Portal Pelanggan: tab "Info" di menu bawah + banner pengumuman terbaru di beranda (ikon & warna sesuai tipe) + halaman "Info & Pengumuman" berisi semua pengumuman aktif',
                 'Migrasi 016: tabel pengumuman',
             ],
         ],

@@ -10,7 +10,7 @@ $list = portal_pengumuman(30);
 
 $page_title = 'Info & Pengumuman';
 $page_sub   = 'Kabar terbaru dari kami';
-$active     = 'beranda';
+$active     = 'info';
 
 ob_start();
 ?>

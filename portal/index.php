@@ -127,11 +127,6 @@ ob_start();
 <!-- Menu cepat -->
 <div class="section-title">Menu cepat</div>
 <div class="pcard tight">
-  <a href="<?= PORTAL_URL ?>info.php" class="irow">
-    <div class="ir-ic ic-blue"><i class="fas fa-bullhorn"></i></div>
-    <div class="ir-main"><div class="ir-t">Info &amp; Pengumuman</div><div class="ir-s">Kabar &amp; pemberitahuan terbaru</div></div>
-    <i class="fas fa-chevron-right text-muted2"></i>
-  </a>
   <a href="<?= PORTAL_URL ?>riwayat.php" class="irow">
     <div class="ir-ic ic-green"><i class="fas fa-receipt"></i></div>
     <div class="ir-main"><div class="ir-t">Riwayat pembayaran</div><div class="ir-s">Lihat tagihan yang sudah lunas</div></div>

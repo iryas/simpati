@@ -9,7 +9,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
 ### Ditambahkan — Info & Pengumuman 📢
 - **Modul Pengumuman (admin)** (`modules/pengumuman/`): CRUD pengumuman dengan tipe (Info / Penting / Promo / Pemeliharaan), opsi **Aktif/Nonaktif** (tampil di portal atau tidak) dan **Sematkan** (pin di atas). Menu **Pengumuman** di grup LAYANAN sidebar (admin).
-- **Portal — Info & Pengumuman**: banner pengumuman terbaru di **beranda** (maks. 2, ikon & warna per tipe) + halaman **`info.php`** berisi semua pengumuman aktif, dan entri di Menu Cepat.
+- **Portal — Info & Pengumuman**: tab **Info** di menu bawah (bottom nav) + banner pengumuman terbaru di **beranda** (maks. 2, ikon & warna per tipe) + halaman **`info.php`** berisi semua pengumuman aktif.
 - Helper `portal_pengumuman()` & `pengumuman_meta()` di `portal/_data.php`.
 - Migrasi **016**: tabel `pengumuman`.
 
