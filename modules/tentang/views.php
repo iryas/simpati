@@ -10,6 +10,36 @@ $active_menu = 'tentang';
 
 $changelog = [
     [
+        'versi'    => '1.9.0',
+        'tanggal'  => '19 Jul 2026',
+        'label'    => 'Portal Pelanggan (PWA)',
+        'warna'    => 'primary',
+        'sections' => [
+            'Ditambahkan — Portal Pelanggan' => [
+                'Portal Pelanggan baru (/portal/): area khusus pelanggan, tampilan mobile-first, bisa di-install ke home screen HP layaknya aplikasi (PWA)',
+                'Login pelanggan dengan Nomor HP + PIN (6 digit), sesi terpisah dari staf, dengan proteksi brute-force',
+                'Beranda: ringkasan tagihan periode berjalan, status langganan, paket, dan pemakaian bulan ini',
+                'Tagihan: total harus dibayar (tagihan berjalan + tunggakan), rincian per periode, tombol konfirmasi bayar ke kasir via WhatsApp',
+                'Riwayat pembayaran dikelompokkan per tahun + halaman struk bukti bayar (diverifikasi kepemilikannya)',
+                'Pemakaian bandwidth: data terpakai per periode berjalan + grafik 6 bulan terakhir',
+                'Lapor gangguan: pelanggan membuat tiket keluhan dan memantau status serta tanggapan petugas',
+                'Akun: lihat detail langganan dan ganti PIN sendiri',
+            ],
+            'Ditambahkan — Sisi Admin' => [
+                'Modul Tiket Gangguan (grup menu LAYANAN, untuk Admin & Teknisi): daftar & filter status, ringkasan per status, tanggapi keluhan (ubah status + balasan), opsi kirim update ke pelanggan via WhatsApp, badge jumlah tiket baru di sidebar',
+                'Set/Reset PIN Portal di detail pelanggan: generate PIN 6 digit acak (tersimpan ter-hash), ditampilkan sekali dengan tombol Salin, opsi kirim PIN ke pelanggan via WhatsApp',
+            ],
+            'Basis Data' => [
+                'Migrasi 014: kolom pin, pin_updated_at, dan portal_last_login pada tabel pelanggan',
+                'Migrasi 015: tabel tiket_gangguan',
+            ],
+            'Keamanan' => [
+                'PIN pelanggan disimpan ter-hash (password_hash) dan tidak pernah dikirim kembali ke klien',
+                'Struk & data pembayaran di portal selalu diverifikasi kepemilikannya terhadap pelanggan yang login',
+            ],
+        ],
+    ],
+    [
         'versi'    => '1.8.0',
         'tanggal'  => '14 Jul 2026',
         'label'    => 'WA Background Queue & Peningkatan Topbar',

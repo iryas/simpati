@@ -5,6 +5,32 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
 ---
 
+## [1.9.0] — 2026-07-19
+
+### Ditambahkan — Portal Pelanggan (PWA) 🎉
+- **Portal Pelanggan** baru di folder `/portal/` — area terpisah, mobile-first, bisa di-*install* ke home screen (PWA: `manifest.php` + `sw.js` + ikon).
+- **Login pelanggan**: No HP + PIN (6 digit), sesi terpisah dari staf, proteksi brute-force (reuse lockout).
+- **Beranda**: ringkasan tagihan periode berjalan, status langganan, paket, pemakaian bulan ini, menu cepat.
+- **Tagihan**: total harus dibayar (tagihan berjalan + tunggakan), rincian per periode, tombol konfirmasi bayar ke kasir via WhatsApp.
+- **Riwayat pembayaran**: dikelompokkan per tahun + halaman **struk** bukti bayar (dengan cek kepemilikan).
+- **Pemakaian bandwidth**: data `usage_pppoe` per periode + riwayat 6 bulan (bar chart CSS, tanpa dependensi JS).
+- **Lapor gangguan**: pelanggan buat tiket (kategori + deskripsi), lihat status & tanggapan; batas 3 tiket aktif.
+- **Akun**: detail langganan + ganti PIN sendiri.
+
+### Ditambahkan — Sisi Admin
+- **Modul Tiket Gangguan** (`modules/tiket/`): daftar + filter status, ringkasan per status, modal tanggapi (ubah status + balasan), opsi kirim update ke pelanggan via WhatsApp. Menu grup **LAYANAN** untuk Admin & Teknisi dengan badge jumlah tiket baru.
+- **Set/Reset PIN Portal** di modal Detail Pelanggan (Admin): generate PIN 6 digit acak, tersimpan ter-hash (`password_hash`), opsi kirim PIN ke pelanggan via WhatsApp.
+
+### Basis Data
+- Migrasi **014**: kolom `pin`, `pin_updated_at`, `portal_last_login` pada tabel `pelanggan`.
+- Migrasi **015**: tabel `tiket_gangguan`.
+
+### Keamanan
+- PIN pelanggan disimpan ter-hash, tidak pernah dikirim ke klien (`get_detail` disanitasi).
+- Struk & data pembayaran di portal selalu diverifikasi kepemilikannya terhadap pelanggan yang login.
+
+---
+
 ## [1.3.0] — 2026-07-05
 
 ### Ditambahkan

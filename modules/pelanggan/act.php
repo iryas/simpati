@@ -338,7 +338,48 @@ switch ($action) {
             [$id]
         );
 
+        $pelanggan['has_pin'] = !empty($pelanggan['pin']);
+        unset($pelanggan['pin']); // jangan bocorkan hash PIN ke klien
+
         json_res(true, '', ['pelanggan' => $pelanggan, 'riwayat' => $riwayat, 'status_log' => $statusLog]);
+
+    // ── RESET / BUAT PIN PORTAL PELANGGAN ─────────────────────
+    case 'reset_pin':
+        auth_role([ROLE_ADMIN]);
+        if (!csrf_verify()) json_res(false, 'Token tidak valid.');
+
+        $id  = (int)post('id');
+        $row = db_row("SELECT id, nama, no_hp FROM pelanggan WHERE id = ? LIMIT 1", [$id]);
+        if (!$row) json_res(false, 'Pelanggan tidak ditemukan.');
+
+        $pin = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        db_update('pelanggan', [
+            'pin'            => password_hash($pin, PASSWORD_DEFAULT),
+            'pin_updated_at' => date('Y-m-d H:i:s'),
+        ], 'id = ?', [$id]);
+
+        $waInfo = 'off';
+        if (isset($_POST['kirim_wa'])) {
+            if (empty($row['no_hp']) || strlen(preg_replace('/[^0-9]/', '', $row['no_hp'])) < 9) {
+                $waInfo = 'no_hp';
+            } else {
+                $nama_isp = app_setting('nama_isp', 'KahfiNet');
+                $pesan  = "*PIN Portal Pelanggan* — {$nama_isp}\n\n";
+                $pesan .= "Halo " . $row['nama'] . ", berikut akses masuk *Portal Pelanggan*:\n\n";
+                $pesan .= "No HP : " . $row['no_hp'] . "\n";
+                $pesan .= "PIN   : " . $pin . "\n\n";
+                $pesan .= "Login di: " . BASE_URL . "portal/\n";
+                $pesan .= "Mohon jaga kerahasiaan PIN. Anda bisa menggantinya setelah login.";
+                try {
+                    $res    = kirim_wa($row['no_hp'], $pesan);
+                    $waInfo = ($res['success'] ?? false) ? 'sent' : 'failed';
+                } catch (Throwable $e) {
+                    $waInfo = 'failed';
+                }
+            }
+        }
+
+        json_res(true, 'PIN portal berhasil dibuat.', ['pin' => $pin, 'wa' => $waInfo, 'nama' => $row['nama']]);
 
     // ── REBOOT ONU (lewat ACS, dari modal Detail Pelanggan) ───
     case 'reboot_onu':

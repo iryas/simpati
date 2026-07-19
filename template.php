@@ -183,6 +183,19 @@ $user = current_user();
         </li>
       <?php endif; ?>
 
+      <?php if (in_array($user['role'], [ROLE_ADMIN, ROLE_TEKNISI])): ?>
+        <li class="nav-label">LAYANAN</li>
+        <?php $tiketBaru = (int)(db_row("SELECT COUNT(*) c FROM tiket_gangguan WHERE status = 'baru'")['c'] ?? 0); ?>
+        <li class="nav-item <?= ($active_menu ?? '') === 'tiket' ? 'active' : '' ?>">
+          <a href="<?= BASE_URL ?>modules/tiket/views.php">
+            <i class="fas fa-headset"></i><span>Tiket Gangguan</span>
+            <?php if ($tiketBaru > 0): ?>
+              <span class="badge badge-danger" style="margin-left:auto"><?= $tiketBaru ?></span>
+            <?php endif; ?>
+          </a>
+        </li>
+      <?php endif; ?>
+
       <?php if ($user['role'] === ROLE_ADMIN): ?>
         <li class="nav-label">PENGATURAN</li>
         <li class="nav-item <?= ($active_menu ?? '') === 'pengaturan' ? 'active' : '' ?>">

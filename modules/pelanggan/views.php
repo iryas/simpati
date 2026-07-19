@@ -471,6 +471,13 @@ $(document).on('click', '.btn-detail-pelanggan', function () {
                 ? esc(d.device_tag || '—') + ' <button type="button" class="btn btn-warning btn-xs ml-2 btn-reboot-onu" data-id="' + d.id + '"><i class="fas fa-power-off mr-1"></i>Reboot ONU</button>'
                 : '<span class="text-muted">Belum dimapping — atur lewat menu ACS &gt; Device ONU</span>'
             ) + '</td></tr>' +
+            '<tr><th>PIN Portal</th><td>' + (
+              d.has_pin
+                ? '<span class="badge badge-success">Aktif</span>' + (d.pin_updated_at ? ' <small class="text-muted">diubah ' + tglIndoPl((d.pin_updated_at || '').substr(0,10)) + '</small>' : '')
+                : '<span class="badge badge-secondary">Belum diset</span>'
+            ) + ' <button type="button" class="btn btn-primary btn-xs ml-2 btn-reset-pin" data-id="' + d.id + '" data-nama="' + esc(d.nama) + '" data-hp="' + esc(d.no_hp || '') + '"><i class="fas fa-key mr-1"></i>' + (d.has_pin ? 'Reset PIN' : 'Buat PIN') + '</button>' +
+              '<div class="pin-result mt-2"></div>' +
+            '</td></tr>' +
           '</table>' +
         '</div>' +
         '<div class="tab-pane fade" id="tabRiwayat">' +
@@ -512,6 +519,54 @@ $(document).on('click', '.btn-reboot-onu', function () {
   }, 'json').always(function () {
     \$btn.prop('disabled', false).html('<i class="fas fa-power-off mr-1"></i>Reboot ONU');
   });
+});
+
+$(document).on('click', '.btn-reset-pin', function () {
+  var \$btn    = $(this);
+  var id      = \$btn.data('id');
+  var nama    = \$btn.data('nama');
+  var hp      = String(\$btn.data('hp') || '');
+  var \$result = \$btn.closest('td').find('.pin-result');
+
+  if (!confirm('Buat PIN portal baru untuk ' + nama + '?\\n\\nPIN lama (jika ada) akan diganti.')) return;
+
+  var kirimWa = false;
+  if (hp && hp.replace(/\\D/g, '').length >= 9) {
+    kirimWa = confirm('Kirim PIN baru ke pelanggan via WhatsApp (' + hp + ')?');
+  }
+
+  \$btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Memproses...');
+
+  var data = { action: 'reset_pin', id: id, csrf_token: $('input[name="csrf_token"]').first().val() };
+  if (kirimWa) data.kirim_wa = 1;
+
+  $.post('{$base_url}modules/pelanggan/act.php', data, function (res) {
+    if (!res.success) { toastr.error(res.msg || 'Gagal membuat PIN.'); return; }
+    var waMsg = '';
+    if (res.data.wa === 'sent')   waMsg = '<div class="text-success mt-1"><i class="fab fa-whatsapp"></i> PIN terkirim via WhatsApp.</div>';
+    if (res.data.wa === 'failed') waMsg = '<div class="text-danger mt-1"><i class="fas fa-exclamation-triangle"></i> WA gagal terkirim — sampaikan PIN manual.</div>';
+    if (res.data.wa === 'no_hp')  waMsg = '<div class="text-warning mt-1"><i class="fas fa-exclamation-triangle"></i> No HP tidak valid — sampaikan PIN manual.</div>';
+    \$result.html(
+      '<div class="alert alert-success mb-0" style="padding:12px 14px">' +
+        '<div style="font-size:12px;font-weight:600;color:#155724;margin-bottom:6px"><i class="fas fa-key mr-1"></i>PIN Portal berhasil dibuat</div>' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+          '<span style="font-size:28px;font-weight:800;letter-spacing:6px;color:#0f2744;font-family:monospace">' + res.data.pin + '</span>' +
+          '<button type="button" class="btn btn-outline-primary btn-xs btn-copy-pin" data-pin="' + res.data.pin + '"><i class="far fa-copy mr-1"></i>Salin</button>' +
+        '</div>' +
+        '<div class="text-muted" style="font-size:11px;margin-top:6px">Catat &amp; sampaikan ke pelanggan. PIN hanya ditampilkan sekali di sini.</div>' +
+        waMsg +
+      '</div>'
+    );
+    toastr.success('PIN portal berhasil dibuat.');
+  }, 'json').always(function () {
+    \$btn.prop('disabled', false).html('<i class="fas fa-key mr-1"></i>Reset PIN');
+  });
+});
+
+$(document).on('click', '.btn-copy-pin', function () {
+  var pin = String($(this).attr('data-pin'));
+  if (navigator.clipboard) { navigator.clipboard.writeText(pin).catch(function () {}); }
+  toastr.success('PIN disalin: ' + pin);
 });
 
 $(document).on('click', '.btn-edit-pelanggan', function () {
