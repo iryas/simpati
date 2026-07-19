@@ -42,10 +42,6 @@ ob_start();
         </span>
       <?php else: ?>
         <?= badge_status('belum', (string)$tagihan['bulan_tagihan']) ?>
-        <span style="font-size:12px;color:rgba(255,255,255,.75)">
-          <i class="far fa-clock mr-1"></i>
-          Jatuh tempo <?= $tagihan['tgl_jatuh_tempo'] ? tgl_indo((string)$tagihan['tgl_jatuh_tempo']) : '—' ?>
-        </span>
       <?php endif; ?>
     </div>
   <?php else: ?>
