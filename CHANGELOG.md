@@ -9,6 +9,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
 ### Ditambahkan — Portal Pelanggan (PWA) 🎉
 - **Portal Pelanggan** baru di folder `/portal/` — area terpisah, mobile-first, bisa di-*install* ke home screen (PWA: `manifest.php` + `sw.js` + ikon).
+- **Banner "Pasang Aplikasi"** (`_pwa_install.php`) di halaman login & seluruh halaman portal: tombol install otomatis (Android/`beforeinstallprompt`), panduan *Add to Home Screen* (iPhone), deteksi in-app browser WhatsApp dengan arahan "buka di Chrome". Service worker & meta iOS ditambahkan ke `login.php` agar installable sejak layar pertama.
 - **Login pelanggan**: No HP + PIN (6 digit), sesi terpisah dari staf, proteksi brute-force (reuse lockout).
 - **Beranda**: ringkasan tagihan periode berjalan, status langganan, paket, pemakaian bulan ini, menu cepat.
 - **Tagihan**: total harus dibayar (tagihan berjalan + tunggakan), rincian per periode, tombol konfirmasi bayar ke kasir via WhatsApp.

@@ -100,5 +100,6 @@ $nav = [
     }
   </script>
   <?= $body_extra ?? '' ?>
+  <?php require __DIR__ . '/_pwa_install.php'; ?>
 </body>
 </html>

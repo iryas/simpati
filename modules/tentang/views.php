@@ -17,6 +17,7 @@ $changelog = [
         'sections' => [
             'Ditambahkan — Portal Pelanggan' => [
                 'Portal Pelanggan baru (/portal/): area khusus pelanggan, tampilan mobile-first, bisa di-install ke home screen HP layaknya aplikasi (PWA)',
+                'Banner "Pasang Aplikasi" di portal: tombol install otomatis di Android, panduan Add to Home Screen untuk iPhone, dan arahan "buka di Chrome" bila dibuka dari dalam WhatsApp',
                 'Login pelanggan dengan Nomor HP + PIN (6 digit), sesi terpisah dari staf, dengan proteksi brute-force',
                 'Beranda: ringkasan tagihan periode berjalan, status langganan, paket, dan pemakaian bulan ini',
                 'Tagihan: total harus dibayar (tagihan berjalan + tunggakan), rincian per periode, tombol konfirmasi bayar ke kasir via WhatsApp',

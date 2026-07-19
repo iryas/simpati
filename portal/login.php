@@ -14,6 +14,9 @@ $nama_isp = clean(app_setting('nama_isp', 'KahfiNet'));
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0f2744">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="<?= $nama_isp ?>">
   <title>Masuk — Portal Pelanggan <?= $nama_isp ?></title>
   <link rel="manifest" href="<?= PORTAL_URL ?>manifest.php">
   <link rel="apple-touch-icon" href="<?= PORTAL_URL ?>assets/icon-192.png">
@@ -173,6 +176,14 @@ $nama_isp = clean(app_setting('nama_isp', 'KahfiNet'));
           $btn.prop('disabled', false).html('<i class="fas fa-sign-in-alt mr-1"></i> Masuk');
         });
     });
+
+    // Registrasi service worker (PWA) — agar portal installable sejak halaman login
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register(BASE + 'sw.js').catch(function () {});
+      });
+    }
   </script>
+  <?php require __DIR__ . '/_pwa_install.php'; ?>
 </body>
 </html>
