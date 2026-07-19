@@ -38,6 +38,9 @@ $changelog = [
                 'PIN pelanggan disimpan ter-hash (password_hash) dan tidak pernah dikirim kembali ke klien',
                 'Struk & data pembayaran di portal selalu diverifikasi kepemilikannya terhadap pelanggan yang login',
             ],
+            'Diperbaiki' => [
+                'Kartu "Tagihan periode ini" di portal kini mengikuti tagihan periode terbaru pelanggan, agar tanggal bayar & status konsisten dengan tampilan admin (sebelumnya bisa berbeda saat ada tagihan periode berikutnya yang sudah dibayar)',
+            ],
         ],
     ],
     [

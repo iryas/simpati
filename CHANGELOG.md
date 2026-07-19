@@ -30,6 +30,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 - PIN pelanggan disimpan ter-hash, tidak pernah dikirim ke klien (`get_detail` disanitasi).
 - Struk & data pembayaran di portal selalu diverifikasi kepemilikannya terhadap pelanggan yang login.
 
+### Diperbaiki
+- **Kartu "Tagihan periode ini" di portal** kini mengambil tagihan **periode terbaru** pelanggan (bukan strict `bulan_tagihan_sekarang()`), agar tanggal bayar & status **konsisten dengan tampilan admin** — pembayaran periode terbaru (termasuk prabayar bulan depan) langsung tampil dengan `tgl_bayar` yang benar. Tunggakan kini dihitung relatif terhadap tagihan terbaru sehingga tidak ada tagihan yang "hilang" dari beranda.
+
 ---
 
 ## [1.3.0] — 2026-07-05

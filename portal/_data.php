@@ -17,24 +17,30 @@ function portal_periode(string $bulan_ym): string {
     return label_periode_tagihan($bulan_ym, $tgl_mulai);
 }
 
-// Tagihan periode berjalan (baris pembayaran bulan ini), atau null.
+// Tagihan TERBARU pelanggan (baris bulan_tagihan paling akhir), atau null.
+// Sengaja ambil periode terbaru (bukan strict bulan berjalan) agar pembayaran
+// periode terbaru — termasuk prabayar bulan depan — langsung tampil di portal
+// dan konsisten dengan tampilan admin.
 function portal_tagihan_kini(int $pid): ?array {
     $r = db_row(
         "SELECT * FROM pembayaran
-         WHERE pelanggan_id = ? AND bulan_tagihan = ?
-         ORDER BY id DESC LIMIT 1",
-        [$pid, bulan_tagihan_sekarang()]
+         WHERE pelanggan_id = ?
+         ORDER BY bulan_tagihan DESC, id DESC LIMIT 1",
+        [$pid]
     );
     return $r ?: null;
 }
 
-// Tunggakan: belum lunas untuk bulan-bulan lampau.
+// Tunggakan: tagihan belum lunas untuk periode SEBELUM tagihan terbaru (yang
+// tampil di kartu utama), supaya tidak ada tagihan yang "hilang" dari beranda.
 function portal_tunggakan(int $pid): array {
+    $last  = db_row("SELECT bulan_tagihan FROM pembayaran WHERE pelanggan_id = ? ORDER BY bulan_tagihan DESC LIMIT 1", [$pid]);
+    $batas = $last ? (string)$last['bulan_tagihan'] : bulan_tagihan_sekarang();
     $rows = db_rows(
         "SELECT * FROM pembayaran
          WHERE pelanggan_id = ? AND status = 'belum' AND bulan_tagihan < ?
          ORDER BY bulan_tagihan ASC",
-        [$pid, bulan_tagihan_sekarang()]
+        [$pid, $batas]
     );
     $total = 0;
     $items = [];
