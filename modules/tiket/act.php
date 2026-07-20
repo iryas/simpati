@@ -93,7 +93,7 @@ switch ($action) {
 
             try {
                 $res = kirim_wa($tiket['no_hp'], $pesan);
-                $waMsg = ($res['success'] ?? false) ? ' Notifikasi WA terkirim.' : ' (Catatan: WA gagal terkirim.)';
+                $waMsg = ($res['ok'] ?? false) ? ' Notifikasi WA terkirim.' : ' (Catatan: WA gagal terkirim.)';
             } catch (Throwable $e) {
                 $waMsg = ' (Catatan: WA gagal terkirim.)';
             }

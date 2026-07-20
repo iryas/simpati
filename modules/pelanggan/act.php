@@ -372,7 +372,7 @@ switch ($action) {
                 $pesan .= "Mohon jaga kerahasiaan PIN. Anda bisa menggantinya setelah login.";
                 try {
                     $res    = kirim_wa($row['no_hp'], $pesan);
-                    $waInfo = ($res['success'] ?? false) ? 'sent' : 'failed';
+                    $waInfo = ($res['ok'] ?? false) ? 'sent' : 'failed';
                 } catch (Throwable $e) {
                     $waInfo = 'failed';
                 }
