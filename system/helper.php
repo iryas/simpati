@@ -272,6 +272,13 @@ function wa_render(string $kode, array $vars): string {
 // ── Format Teks Pesan Bukti Pembayaran untuk WA ───────────────
 // $row harus mengandung: id, jumlah, potongan, terbayar, tgl_bayar,
 //   bulan_tagihan, nama_pelanggan, no_hp, nama_paket
+// Nomor bukti bayar: YYYY-ddmm-NNN (dari tgl_bayar + id pembayaran).
+// Dipakai bersama oleh struk WhatsApp & struk portal agar formatnya selalu sama.
+function format_no_bayar(array $row): string {
+    $ts = strtotime($row['tgl_bayar'] ?? 'now') ?: time();
+    return date('Y', $ts) . '-' . date('dm', $ts) . '-' . str_pad((string)($row['id'] ?? 0), 3, '0', STR_PAD_LEFT);
+}
+
 function format_pesan_bukti_bayar(array $row): string {
     $nama_isp    = app_setting('nama_isp', 'KahfiNet');
     $jumlah      = (int)$row['jumlah'];
@@ -282,7 +289,7 @@ function format_pesan_bukti_bayar(array $row): string {
     $bln_indo  = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
     $ts_bayar  = strtotime($row['tgl_bayar'] ?? 'now');
     $tgl_bayar = date('d/m/Y', $ts_bayar);
-    $no_bayar  = date('Y', $ts_bayar) . '-' . date('dm', $ts_bayar) . '-' . str_pad((string)$row['id'], 3, '0', STR_PAD_LEFT);
+    $no_bayar  = format_no_bayar($row);
 
     $periode = '';
     if (!empty($row['bulan_tagihan'])) {

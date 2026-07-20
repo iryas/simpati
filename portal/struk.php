@@ -21,7 +21,7 @@ $py = db_row(
 $nama_isp = clean(app_setting('nama_isp', 'KahfiNet'));
 
 $page_title = 'Struk Pembayaran';
-$page_sub   = $py ? '#' . str_pad((string)$py['id'], 5, '0', STR_PAD_LEFT) : '';
+$page_sub   = $py ? format_no_bayar($py) : '';
 $active     = 'tagihan';
 $back_url   = PORTAL_URL . 'riwayat.php';
 
@@ -54,13 +54,13 @@ ob_start();
   </div>
 
   <div class="pcard">
-    <div class="kv"><span class="k">No. Struk</span><span class="v">#<?= str_pad((string)$py['id'], 5, '0', STR_PAD_LEFT) ?></span></div>
+    <div class="kv"><span class="k">No. Struk</span><span class="v"><?= format_no_bayar($py) ?></span></div>
     <div class="kv"><span class="k">Nama</span><span class="v"><?= clean($me['nama']) ?></span></div>
     <div class="kv"><span class="k">Periode</span><span class="v"><?= clean(portal_periode((string)$py['bulan_tagihan'])) ?></span></div>
     <div class="kv"><span class="k">Paket</span><span class="v"><?= $py['nama_paket'] ? clean($py['nama_paket']) : '—' ?></span></div>
     <div class="kv"><span class="k">Tagihan</span><span class="v"><?= rupiah((int)$py['jumlah']) ?></span></div>
     <?php if ((int)$py['potongan'] > 0): ?>
-      <div class="kv"><span class="k">Potongan</span><span class="v" style="color:#16a34a;"><?= (int)$py['potongan'] ?> hari</span></div>
+      <div class="kv"><span class="k">Potongan</span><span class="v" style="color:#16a34a;"><?= (int)$py['potongan'] ?> hari &middot; &minus;<?= rupiah((int)$py['jumlah'] - portal_nominal((int)$py['jumlah'], (int)$py['potongan'])) ?></span></div>
     <?php endif; ?>
     <?php if ($lunas): ?>
       <div class="kv"><span class="k">Dibayar</span><span class="v"><?= rupiah((int)$py['terbayar']) ?></span></div>

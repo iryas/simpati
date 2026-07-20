@@ -13,6 +13,7 @@ $tagihan   = portal_tagihan_kini($pid);
 $tunggakan = portal_tunggakan($pid);
 
 $tg_nominal = $tagihan ? portal_nominal((int)$tagihan['jumlah'], (int)$tagihan['potongan']) : 0;
+$tg_disc    = $tagihan ? ((int)$tagihan['jumlah'] - $tg_nominal) : 0;
 $tg_belum   = $tagihan && $tagihan['status'] === 'belum';
 
 $total_bayar = ($tg_belum ? $tg_nominal : 0) + $tunggakan['total'];
@@ -57,7 +58,7 @@ ob_start();
     <div class="kv"><span class="k">Paket</span><span class="v"><?= $me['nama_paket'] ? clean($me['nama_paket']) : '—' ?></span></div>
     <div class="kv"><span class="k">Tagihan</span><span class="v"><?= rupiah((int)$tagihan['jumlah']) ?></span></div>
     <?php if ((int)$tagihan['potongan'] > 0): ?>
-      <div class="kv"><span class="k">Potongan</span><span class="v" style="color:#16a34a;"><?= (int)$tagihan['potongan'] ?> hari</span></div>
+      <div class="kv"><span class="k">Potongan</span><span class="v" style="color:#16a34a;"><?= (int)$tagihan['potongan'] ?> hari &middot; &minus;<?= rupiah($tg_disc) ?></span></div>
     <?php endif; ?>
     <div class="kv">
       <span class="k">Status</span>

@@ -16,6 +16,7 @@ $pengumuman = portal_pengumuman(3);
 
 // Nominal & status tagihan berjalan
 $tg_nominal = $tagihan ? portal_nominal((int)$tagihan['jumlah'], (int)$tagihan['potongan']) : 0;
+$tg_disc    = $tagihan ? ((int)$tagihan['jumlah'] - $tg_nominal) : 0;
 $tg_lunas   = $tagihan && $tagihan['status'] === 'lunas';
 
 $page_title = 'Beranda';
@@ -35,6 +36,12 @@ ob_start();
   <?php if ($tagihan): ?>
     <div class="bc-amount"><?= $tg_lunas ? rupiah((int)$tagihan['terbayar']) : rupiah($tg_nominal) ?></div>
     <div class="bc-period"><?= clean(portal_periode((string)$tagihan['bulan_tagihan'])) ?></div>
+    <?php if ((int)$tagihan['potongan'] > 0): ?>
+      <div style="font-size:12px;color:#4ade80;font-weight:700;margin-top:6px;">
+        <i class="fas fa-tag" style="font-size:10px"></i>
+        Termasuk potongan <?= (int)$tagihan['potongan'] ?> hari (&minus;<?= rupiah($tg_disc) ?>)
+      </div>
+    <?php endif; ?>
     <div class="bc-foot">
       <?php if ($tg_lunas): ?>
         <span class="badge badge-success"><i class="fas fa-check-circle mr-1"></i>Lunas</span>
