@@ -18,16 +18,21 @@ header('X-Content-Type-Options: nosniff');
 header('X-XSS-Protection: 1; mode=block');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 header("Content-Security-Policy: default-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.datatables.net; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.datatables.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; img-src 'self' data:;");
-// Aktifkan baris berikut jika sudah pakai HTTPS:
-// header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+// Deteksi HTTPS (langsung atau di belakang reverse-proxy / SSL termination).
+$__is_https = (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
+           || (($_SERVER['SERVER_PORT'] ?? '') == 443)
+           || (strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https');
+if ($__is_https) {
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+}
 
 // ── Session Hardening ─────────────────────────────────────────
 ini_set('session.cookie_httponly', 1);     // Cookie tidak bisa diakses JS
 ini_set('session.cookie_samesite', 'Strict');
 ini_set('session.use_strict_mode', 1);     // Tolak session ID yang tidak dikenal
 ini_set('session.gc_maxlifetime', 7200);   // Session mati setelah 2 jam idle
-// Aktifkan jika sudah HTTPS:
-// ini_set('session.cookie_secure', 1);
+// Cookie Secure otomatis saat HTTPS (produksi); non-Secure di dev http lokal.
+ini_set('session.cookie_secure', $__is_https ? 1 : 0);
 
 session_name(SESSION_NAME);
 session_start();
@@ -165,43 +170,50 @@ function current_user(): array {
     ];
 }
 
-// ── Brute Force: Cek Lockout ──────────────────────────────────
+// ── Brute Force: lockout berbasis DB (tabel login_attempts) ───
+//  Disimpan di DB, BUKAN $_SESSION, supaya tidak bisa di-bypass dengan
+//  membuang cookie sesi tiap percobaan. Kunci = identifier (IP + akun).
+//  Defensif: bila tabel belum ada (migrasi 017 belum jalan), login tidak
+//  crash — lockout sekadar nonaktif sampai tabelnya dibuat.
 function login_is_locked(string $identifier): bool {
-    $key    = 'login_attempts_' . md5($identifier);
-    $locked = 'login_locked_until_' . md5($identifier);
-
-    if (isset($_SESSION[$locked]) && time() < $_SESSION[$locked]) {
-        return true;
-    }
-    // Reset jika lockout sudah berakhir
-    if (isset($_SESSION[$locked]) && time() >= $_SESSION[$locked]) {
-        unset($_SESSION[$key], $_SESSION[$locked]);
-    }
-    return false;
+    try {
+        $row = db_row("SELECT locked_until FROM login_attempts WHERE identifier = ?", [$identifier]);
+    } catch (Throwable $e) { return false; }
+    return $row && !empty($row['locked_until']) && strtotime((string)$row['locked_until']) > time();
 }
 
 function login_record_fail(string $identifier): void {
-    $key    = 'login_attempts_' . md5($identifier);
-    $locked = 'login_locked_until_' . md5($identifier);
-
-    $_SESSION[$key] = ($_SESSION[$key] ?? 0) + 1;
-
-    if ($_SESSION[$key] >= LOGIN_MAX_ATTEMPTS) {
-        $_SESSION[$locked] = time() + (LOGIN_LOCKOUT_MINUTES * 60);
-        unset($_SESSION[$key]);
-    }
+    try {
+        $row  = db_row("SELECT attempts FROM login_attempts WHERE identifier = ?", [$identifier]);
+        $n    = ($row ? (int)$row['attempts'] : 0) + 1;
+        $lock = null;
+        if ($n >= LOGIN_MAX_ATTEMPTS) {
+            $lock = date('Y-m-d H:i:s', time() + LOGIN_LOCKOUT_MINUTES * 60);
+            $n = 0; // reset penghitung setelah dikunci
+        }
+        $data = ['attempts' => $n, 'locked_until' => $lock, 'updated_at' => date('Y-m-d H:i:s')];
+        if ($row) {
+            db_update('login_attempts', $data, 'identifier = ?', [$identifier]);
+        } else {
+            $data['identifier'] = $identifier;
+            db_insert('login_attempts', $data);
+        }
+    } catch (Throwable $e) { /* tabel belum ada — abaikan */ }
 }
 
 function login_reset(string $identifier): void {
-    $key    = 'login_attempts_' . md5($identifier);
-    $locked = 'login_locked_until_' . md5($identifier);
-    unset($_SESSION[$key], $_SESSION[$locked]);
+    try {
+        db_query("DELETE FROM login_attempts WHERE identifier = ?", [$identifier]);
+    } catch (Throwable $e) { /* abaikan */ }
 }
 
 function login_lockout_remaining(string $identifier): int {
-    $locked = 'login_locked_until_' . md5($identifier);
-    if (isset($_SESSION[$locked])) {
-        return max(0, (int)(($_SESSION[$locked] - time()) / 60));
+    try {
+        $row = db_row("SELECT locked_until FROM login_attempts WHERE identifier = ?", [$identifier]);
+    } catch (Throwable $e) { return 0; }
+    if ($row && !empty($row['locked_until'])) {
+        $rem = strtotime((string)$row['locked_until']) - time();
+        return $rem > 0 ? (int)ceil($rem / 60) : 0;
     }
     return 0;
 }
