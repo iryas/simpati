@@ -5,7 +5,8 @@
 //    php worker.php wa:work      → Jalankan antrian WA
 //    php worker.php wa:status    → Lihat status antrian
 //    php worker.php wa:reset     → Reset job gagal ke pending
-//    php worker.php usage:poll   → Polling byte-out & uptime dari Mikrotik (tiap 5 menit)
+//    php worker.php usage:poll   → Polling byte-out & uptime sekali (untuk cron)
+//    php worker.php usage:work   → Polling terus-menerus (loop, default tiap 1 menit)
 //    php worker.php usage:show   → Lihat rekap pemakaian bulan ini
 // ============================================================
 
@@ -25,6 +26,7 @@ switch ($cmd) {
     case 'wa:status':   wa_status();    break;
     case 'wa:reset':    wa_reset();     break;
     case 'usage:poll':  usage_poll();   break;
+    case 'usage:work':  usage_work();   break;
     case 'usage:show':  usage_show();   break;
     default:            wa_help();      break;
 }
@@ -45,9 +47,12 @@ function usage_poll(): void {
         return;
     }
 
+    // Counter byte diambil dari /interface (bytes-out tidak tersedia di /ppp/active).
+    $traffic = mikrotik_fetch_pppoe_traffic() ?? [];
+
     // Tentukan bulan_tagihan yang sedang berjalan
     $bulan = bulan_tagihan_sekarang();
-    wa_log("Bulan tagihan: $bulan | Sesi aktif: " . count($active));
+    wa_log("Bulan tagihan: $bulan | Sesi aktif: " . count($active) . " | Traffic iface: " . count($traffic));
 
     // Map nama secret → pelanggan_id dari DB
     $secret_map = [];
@@ -66,7 +71,7 @@ function usage_poll(): void {
 
     foreach ($active as $sess) {
         $name       = strtolower($sess['name'] ?? '');
-        $bytes_out  = (int)($sess['bytes-out'] ?? 0);
+        $bytes_out  = (int)($traffic[$name]['tx'] ?? 0);   // tx-byte = download pelanggan
         $uptime_str = $sess['uptime'] ?? '0s';
         $uptime_sec = parse_mikrotik_uptime($uptime_str);
 
@@ -121,8 +126,22 @@ function usage_poll(): void {
     wa_log("✓ Selesai — update: $updated, skip (tidak terdaftar): $skipped");
 }
 
+// ── Usage: loop terus-menerus (poll tiap N menit) ────────────
+//  Alternatif cron. Contoh: php worker.php usage:work 1  (tiap 1 menit)
+function usage_work(): void {
+    global $argv;
+    $menit = max(1, (int)($argv[2] ?? 1)); // interval menit, default 1
+    wa_log("Usage worker mulai — polling tiap {$menit} menit. Tekan Ctrl+C untuk berhenti.\n");
+    while (true) {
+        usage_poll();
+        wa_log("Tidur {$menit} menit sebelum polling berikutnya...\n");
+        sleep($menit * 60);
+    }
+}
+
 // ── Usage: tampilkan rekap bulan ini ─────────────────────────
 function usage_show(): void {
+    global $argv;
     $bulan = $argv[2] ?? bulan_tagihan_sekarang();
     $rows  = db_rows(
         "SELECT pl.nama, up.bytes_out, up.uptime_seconds, up.last_poll_at
@@ -168,8 +187,9 @@ function wa_help(): void {
     php worker.php wa:reset     Reset semua job gagal → pending
 
   Pemakaian PPPoE:
-    php worker.php usage:poll   Polling byte-out & uptime dari Mikrotik
-    php worker.php usage:show   Rekap pemakaian bulan ini
+    php worker.php usage:poll     Polling sekali (untuk cron)
+    php worker.php usage:work [n] Polling terus-menerus tiap n menit (default 1)
+    php worker.php usage:show     Rekap pemakaian bulan ini
 
   Contoh jalankan polling tiap 5 menit (Windows):
     php worker.php usage:poll
@@ -301,13 +321,13 @@ function wa_status(): void {
 
 // ── Reset job gagal ───────────────────────────────────────────
 function wa_reset(): void {
-    $n = db_query(
+    $stmt = db_query(
         "UPDATE wa_queue
          SET status = 'pending', attempts = 0, next_retry = NULL, error_msg = NULL
          WHERE status = 'gagal'"
     );
-    $jumlah = db_row("SELECT ROW_COUNT() as n")['n'] ?? 0;
-    echo "\n  Reset selesai: semua job gagal dikembalikan ke pending.\n\n";
+    $jumlah = $stmt->rowCount();
+    echo "\n  Reset selesai: {$jumlah} job gagal dikembalikan ke pending.\n\n";
 }
 
 // ── Log helper ────────────────────────────────────────────────

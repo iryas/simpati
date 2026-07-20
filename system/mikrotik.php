@@ -187,6 +187,33 @@ function mikrotik_fetch_active(): ?array
     }
 }
 
+// Peta traffic PPPoE dari /interface (counter byte TIDAK tersedia di /ppp/active).
+// Interface dinamis bernama "<pppoe-USERNAME>". Return: [username_lower => ['tx'=>, 'rx'=>]].
+//   tx-byte = data ke pelanggan (download) · rx-byte = dari pelanggan (upload).
+function mikrotik_fetch_pppoe_traffic(): ?array
+{
+    $api = mikrotik_client();
+    if (!$api) return null;
+    try {
+        $rows = $api->comm('/interface/print');
+        $api->close();
+    } catch (Throwable $e) {
+        mikrotik_log('Gagal ambil interface stats: ' . $e->getMessage());
+        return null;
+    }
+    $map = [];
+    foreach ((array)$rows as $i) {
+        if (($i['type'] ?? '') !== 'pppoe-in') continue;
+        if (preg_match('/^<pppoe-(.+)>$/', (string)($i['name'] ?? ''), $m)) {
+            $map[strtolower($m[1])] = [
+                'tx' => (int)($i['tx-byte'] ?? 0),
+                'rx' => (int)($i['rx-byte'] ?? 0),
+            ];
+        }
+    }
+    return $map;
+}
+
 function mikrotik_is_online(): bool
 {
     $api = mikrotik_client();
