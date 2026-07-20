@@ -21,6 +21,12 @@ define('WA_RETRY_DELAYS', [5, 15]); // menit: gagal ke-1 → 5 mnt, gagal ke-2 �
 
 $cmd = $argv[1] ?? 'help';
 
+// File log per-perintah, ditulis LANGSUNG oleh wa_log() lewat path absolut
+// (__DIR__) — tidak bergantung redirect shell "> file", jadi log tetap terisi
+// walau dijalankan langsung via php.exe di Task Scheduler / cron.
+$__log_map = ['wa:work' => 'wa_worker.log', 'usage:poll' => 'usage_poll.log', 'usage:work' => 'usage_poll.log'];
+$GLOBALS['WORKER_LOG'] = __DIR__ . '/logs/' . ($__log_map[$cmd] ?? 'worker.log');
+
 switch ($cmd) {
     case 'wa:work':     wa_work();      break;
     case 'wa:status':   wa_status();    break;
@@ -332,5 +338,7 @@ function wa_reset(): void {
 
 // ── Log helper ────────────────────────────────────────────────
 function wa_log(string $msg): void {
-    echo '[' . date('Y-m-d H:i:s') . '] ' . $msg . "\n";
+    $line = '[' . date('Y-m-d H:i:s') . '] ' . $msg . "\n";
+    echo $line;
+    @file_put_contents($GLOBALS['WORKER_LOG'] ?? (__DIR__ . '/logs/worker.log'), $line, FILE_APPEND);
 }

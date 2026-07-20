@@ -21,7 +21,8 @@ if exist "C:\xampp82\php\php.exe" set "PHP=C:\xampp82\php\php.exe"
 REM --- Pindah ke folder aplikasi (folder induk dari cron\) ---
 cd /d "%~dp0.."
 
-REM --- Jalankan + catat log (worker.php sudah menambah timestamp) ---
-"%PHP%" worker.php usage:poll >> "logs\usage_poll.log" 2>&1
+REM --- Jalankan. worker.php menulis log sendiri ke logs\usage_poll.log ---
+REM     (lewat __DIR__, jadi tak bergantung redirect shell).
+"%PHP%" worker.php usage:poll
 
 endlocal
