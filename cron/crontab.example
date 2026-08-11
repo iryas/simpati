@@ -21,6 +21,11 @@
 #    Makin sering = makin akurat saat pelanggan reconnect (boleh */1 atau */3).
 */5 * * * * cd /path/ke/kahfinet1 && php worker.php usage:poll >> logs/usage_poll.log 2>&1
 
+# ── Sync cache ONU dari GenieACS (Monitoring) — tiap 1 menit ──
+#    Menyegarkan status/RXPower/suhu/WiFi ONU untuk area Monitoring.
+#    Default 1 menit; boleh diperlama (*/2 atau */3) — ONU lapor tiap ~100 detik.
+*/1 * * * * cd /path/ke/kahfinet1 && php worker.php acs:sync >> logs/acs_sync.log 2>&1
+
 # ── Auto-isolir pelanggan menunggak — tiap hari jam 01:00 ──
 0 1 * * * cd /path/ke/kahfinet1 && php cron/isolir_check.php >> logs/isolir_cron.log 2>&1
 
@@ -30,5 +35,6 @@
 #
 #  Alternatif TANPA cron (proses loop) — jalankan & jaga tetap hidup:
 #    nohup php worker.php usage:work 1 >> logs/usage_poll.log 2>&1 &   # pemakaian, loop tiap 1 menit
+#    nohup php worker.php acs:work 1   >> logs/acs_sync.log   2>&1 &   # sync ONU, loop tiap 1 menit
 #    nohup php worker.php wa:work        >> logs/wa_worker.log  2>&1 &   # antrian WhatsApp
 # ============================================================

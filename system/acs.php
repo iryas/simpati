@@ -143,3 +143,18 @@ function acs_reboot_device(string $deviceId): bool
     $res = acs_request('POST', '/devices/' . rawurlencode($deviceId) . '/tasks', ['connection_request' => ''], ['name' => 'reboot']);
     return $res !== null;
 }
+
+// Set nilai parameter (TR-069 setParameterValues) + connection_request supaya
+// diterapkan segera bila ONU online. $params: [[path, value, 'xsd:string'], ...].
+// Return true bila task diterima ACS (HTTP 2xx), false bila gagal/timeout.
+function acs_set_parameter_values(string $deviceId, array $params): bool
+{
+    if (!$params) return false;
+    $res = acs_request(
+        'POST',
+        '/devices/' . rawurlencode($deviceId) . '/tasks',
+        ['connection_request' => ''],
+        ['name' => 'setParameterValues', 'parameterValues' => array_values($params)]
+    );
+    return $res !== null;
+}

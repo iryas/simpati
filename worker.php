@@ -8,6 +8,8 @@
 //    php worker.php usage:poll   → Polling byte-out & uptime sekali (untuk cron)
 //    php worker.php usage:work   → Polling terus-menerus (loop, default tiap 1 menit)
 //    php worker.php usage:show   → Lihat rekap pemakaian bulan ini
+//    php worker.php acs:sync     → Sync cache ONU dari GenieACS sekali (untuk cron)
+//    php worker.php acs:work     → Sync terus-menerus (loop, default tiap 1 menit)
 // ============================================================
 
 if (PHP_SAPI !== 'cli') {
@@ -24,7 +26,7 @@ $cmd = $argv[1] ?? 'help';
 // File log per-perintah, ditulis LANGSUNG oleh wa_log() lewat path absolut
 // (__DIR__) — tidak bergantung redirect shell "> file", jadi log tetap terisi
 // walau dijalankan langsung via php.exe di Task Scheduler / cron.
-$__log_map = ['wa:work' => 'wa_worker.log', 'usage:poll' => 'usage_poll.log', 'usage:work' => 'usage_poll.log'];
+$__log_map = ['wa:work' => 'wa_worker.log', 'usage:poll' => 'usage_poll.log', 'usage:work' => 'usage_poll.log', 'acs:sync' => 'acs_sync.log', 'acs:work' => 'acs_sync.log'];
 $GLOBALS['WORKER_LOG'] = __DIR__ . '/logs/' . ($__log_map[$cmd] ?? 'worker.log');
 
 switch ($cmd) {
@@ -34,6 +36,8 @@ switch ($cmd) {
     case 'usage:poll':  usage_poll();   break;
     case 'usage:work':  usage_work();   break;
     case 'usage:show':  usage_show();   break;
+    case 'acs:sync':    acs_sync_run(); break;
+    case 'acs:work':    acs_work();     break;
     default:            wa_help();      break;
 }
 
@@ -145,6 +149,26 @@ function usage_work(): void {
     }
 }
 
+// ── ACS: sync cache ONU dari GenieACS (sekali, untuk cron) ───
+function acs_sync_run(): void {
+    wa_log("Sync device ONU dari GenieACS (NBI)...");
+    $res = acs_sync_devices();
+    wa_log(($res['ok'] ? '✓ ' : '✗ ') . $res['msg']);
+}
+
+// ── ACS: loop sync terus-menerus (default tiap 1 menit) ──────
+//  Contoh: php worker.php acs:work 2  (sync tiap 2 menit)
+function acs_work(): void {
+    global $argv;
+    $menit = max(1, (int)($argv[2] ?? 1)); // interval menit, default 1
+    wa_log("ACS sync worker mulai — sync tiap {$menit} menit. Tekan Ctrl+C untuk berhenti.\n");
+    while (true) {
+        acs_sync_run();
+        wa_log("Tidur {$menit} menit sebelum sync berikutnya...\n");
+        sleep($menit * 60);
+    }
+}
+
 // ── Usage: tampilkan rekap bulan ini ─────────────────────────
 function usage_show(): void {
     global $argv;
@@ -197,9 +221,13 @@ function wa_help(): void {
     php worker.php usage:work [n] Polling terus-menerus tiap n menit (default 1)
     php worker.php usage:show     Rekap pemakaian bulan ini
 
-  Contoh jalankan polling tiap 5 menit (Windows):
+  Sync ONU (GenieACS):
+    php worker.php acs:sync       Sync cache ONU sekali (untuk cron/Task Scheduler)
+    php worker.php acs:work [n]   Sync terus-menerus tiap n menit (default 1)
+
+  Contoh (Windows Task Scheduler tiap 1 menit):
+    php worker.php acs:sync
     php worker.php usage:poll
-    php worker.php wa:status
 
 TXT;
 }

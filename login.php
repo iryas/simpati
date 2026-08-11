@@ -272,10 +272,17 @@ if (is_logged_in()) redirect(BASE_URL . 'index.php');
         </button>
       </div>
 
-      <div class="remember-row">
+      <div class="remember-row" style="flex-direction:column;align-items:flex-start;gap:11px">
         <div class="custom-control custom-checkbox">
           <input type="checkbox" class="custom-control-input" id="remember_me" name="remember_me">
           <label class="custom-control-label" for="remember_me">Ingat saya selama <?= REMEMBER_ME_DAYS ?> hari</label>
+        </div>
+        <div class="custom-control custom-checkbox">
+          <input type="checkbox" class="custom-control-input" id="akses_monitoring" name="akses_monitoring">
+          <label class="custom-control-label" for="akses_monitoring">
+            <i class="fas fa-heartbeat mr-1" style="color:#f59e0b"></i>Buka Monitoring Jaringan setelah masuk
+            <span style="display:block;font-size:11px;color:#94a3b8;margin-top:1px">Khusus Admin &amp; Teknisi</span>
+          </label>
         </div>
       </div>
 

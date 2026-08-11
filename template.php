@@ -142,6 +142,11 @@ $user = current_user();
 
       <?php if (in_array($user['role'], [ROLE_ADMIN, ROLE_TEKNISI])): ?>
         <li class="nav-label">JARINGAN</li>
+        <li class="nav-item <?= ($active_menu ?? '') === 'monitoring' ? 'active' : '' ?>">
+          <a href="<?= BASE_URL ?>monitoring/index.php">
+            <i class="fas fa-heartbeat"></i><span>Monitoring Jaringan</span>
+          </a>
+        </li>
         <?php $mikrotikActive = in_array($active_menu ?? '', ['mikrotik_pengaturan', 'mikrotik_profile', 'mikrotik_secret'], true); ?>
         <li class="nav-item nav-item-dropdown <?= $mikrotikActive ? 'active open' : '' ?>">
           <a href="#submenuMikrotik" data-toggle="collapse" class="nav-link-dropdown"

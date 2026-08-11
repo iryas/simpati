@@ -64,8 +64,14 @@ switch ($action) {
                 setcookie(COOKIE_NAME, $token, time() + (REMEMBER_ME_DAYS * 86400), '/', '', $isSecure, true);
             }
 
+            // Tujuan setelah login: Monitoring (jika dicentang & role teknis) atau dashboard admin.
+            $aksesMonitoring = isset($_POST['akses_monitoring']);
+            $redirect = ($aksesMonitoring && in_array($user['role'], [ROLE_ADMIN, ROLE_TEKNISI], true))
+                ? BASE_URL . 'monitoring/index.php'
+                : BASE_URL . 'index.php';
+
             flash('success', 'Login berhasil! Selamat datang, ' . $user['nama'] . '.');
-            json_res(true, 'Login berhasil.', ['redirect' => BASE_URL . 'index.php']);
+            json_res(true, 'Login berhasil.', ['redirect' => $redirect]);
         } else {
             // Login gagal: catat percobaan
             login_record_fail($identifier);
