@@ -142,10 +142,13 @@ if ($dev !== '') {
 $page_title = 'Daftar ONU';
 $list = mon_onu_list();
 
-$count = ['all' => count($list), 'online' => 0, 'offline' => 0, 'isolir' => 0];
+$count = ['all' => count($list), 'online' => 0, 'offline' => 0, 'isolir' => 0, 'unmapped' => 0];
 $areas = [];
 foreach ($list as $r) {
-    $count[$r['status']]++;
+    // ONU belum ter-mapping dihitung terpisah (bukan pelanggan aktif),
+    // supaya chip Online/Offline/Isolir tetap mencerminkan pelanggan saja.
+    if (!$r['mapped']) { $count['unmapped']++; }
+    else { $count[$r['status']]++; }
     if ($r['area'] !== '—') $areas[$r['area']] = true;
 }
 ksort($areas);
@@ -181,6 +184,7 @@ ob_start();
   table.df tbody tr:last-child td{border-bottom:none}
   .df-name{font-weight:700;color:var(--ink)}
   .df-ppp{font-size:11.5px;color:var(--muted);margin-top:1px}
+  .df-unmapped{font-size:11px;color:var(--warn);margin-top:2px;font-weight:600;display:flex;align-items:center;gap:4px}
   .df-badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px}
   .df-badge .d{width:6px;height:6px;border-radius:50%}
   .df-rx{font-weight:700;font-variant-numeric:tabular-nums}
@@ -194,10 +198,11 @@ ob_start();
 <div class="df-stats" id="dfStats">
   <?php
   $chips = [
-      'all'     => ['Total ONU', 'fa-server',    '--ink'],
-      'online'  => ['Online',    'fa-circle',    '--green'],
-      'offline' => ['Offline',   'fa-circle',    '--red'],
-      'isolir'  => ['Isolir',    'fa-circle',    '--amber'],
+      'all'      => ['Total ONU',         'fa-server',              '--ink'],
+      'online'   => ['Online',            'fa-circle',              '--green'],
+      'offline'  => ['Offline',           'fa-circle',              '--red'],
+      'isolir'   => ['Isolir',            'fa-circle',              '--amber'],
+      'unmapped' => ['Belum ter-mapping', 'fa-question-circle',     '--muted'],
   ];
   foreach ($chips as $k => [$lbl, $ic, $col]):
   ?>
@@ -242,12 +247,14 @@ ob_start();
             [$stCol, $stTxt] = $badge[$r['status']];
             $href = $MOD_URL . 'form.php?dev=' . urlencode($r['device_id']);
             $searchKey = strtolower($r['pelanggan'] . ' ' . $r['pppoe'] . ' ' . $r['model'] . ' ' . $r['area']);
+            $filterKey = $r['mapped'] ? $r['status'] : 'unmapped';
         ?>
-        <tr data-status="<?= $r['status'] ?>" data-area="<?= clean($r['area']) ?>" data-search="<?= clean($searchKey) ?>"
+        <tr data-status="<?= $filterKey ?>" data-area="<?= clean($r['area']) ?>" data-search="<?= clean($searchKey) ?>"
             onclick="location.href='<?= $href ?>'">
           <td>
             <div class="df-name"><?= clean($r['pelanggan']) ?></div>
             <?php if ($r['pppoe']): ?><div class="df-ppp"><i class="fas fa-user-tag" style="font-size:9px"></i> <?= clean($r['pppoe']) ?></div><?php endif; ?>
+            <?php if (!$r['mapped']): ?><div class="df-unmapped"><i class="fas fa-question-circle" style="font-size:9px"></i> Belum ter-mapping</div><?php endif; ?>
           </td>
           <td class="df-model"><?= clean($r['area']) ?></td>
           <td class="df-model"><?= clean($r['model']) ?></td>

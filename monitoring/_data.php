@@ -164,6 +164,15 @@ function mon_pemakaian_data(string $bulan = ''): array {
     ];
 }
 
+// Format durasi detik → string manusiawi (dipakai pesan alert).
+function mon_fmt_durasi(?int $sek): string {
+    if ($sek === null || $sek <= 0) return '—';
+    if ($sek < 60)    return $sek . 'd';
+    if ($sek < 3600)  return floor($sek / 60) . 'mnt';
+    if ($sek < 86400) return floor($sek / 3600) . 'j ' . floor(($sek % 3600) / 60) . 'mnt';
+    return floor($sek / 86400) . 'hr ' . floor(($sek % 86400) / 3600) . 'j';
+}
+
 // Daftar semua ONU + status + RXPower + pelanggan/area (untuk tabel).
 function mon_onu_list(): array {
     $m   = db_row("SELECT MAX(last_inform) x FROM genieacs_devices_cache");
@@ -180,7 +189,10 @@ function mon_onu_list(): array {
 
     $out = [];
     foreach ($rows as $r) {
-        if (empty($r['area'])) continue; // Lewati ONU tanpa area.
+        // ONU tanpa area (PPPoE tak ketemu di Mikrotik, secret tak terhubung ke
+        // pelanggan, atau pelanggan belum punya area) TETAP ditampilkan — ditandai
+        // 'mapped' => false, bukan disembunyikan diam-diam (bisa jadi ONU basi
+        // yang belum dihapus di ACS, atau instalasi baru yang belum di-mapping).
         $j  = $r['raw'] ? json_decode($r['raw'], true) : null;
         $rx = $j ? mon_find_value($j, '/RXPower/i') : null;
         $li = $r['last_inform'] ? strtotime($r['last_inform']) : 0;
@@ -195,12 +207,16 @@ function mon_onu_list(): array {
             'status'      => $status,
             'rx'          => $rx,
             'last_inform' => $r['last_inform'],
+            'mapped'      => !empty($r['area']),
         ];
     }
-    // Urut: bermasalah dulu (offline/isolir), lalu per nama.
+    // Urut: yang ke-mapping dulu (bermasalah di atas, lalu per nama), ONU
+    // belum ter-mapping ditaruh paling bawah (bukan prioritas kerja harian).
     usort($out, function ($a, $b) {
         $rank = ['offline' => 0, 'isolir' => 1, 'online' => 2];
-        return [$rank[$a['status']], $a['pelanggan']] <=> [$rank[$b['status']], $b['pelanggan']];
+        $am   = $a['mapped'] ? 0 : 1;
+        $bm   = $b['mapped'] ? 0 : 1;
+        return [$am, $rank[$a['status']], $a['pelanggan']] <=> [$bm, $rank[$b['status']], $b['pelanggan']];
     });
     return $out;
 }
@@ -260,7 +276,10 @@ function mon_offline_by_area(): array {
 // ONU bermasalah berdasarkan RXPower — early warning sebelum putus (untuk modul Signal).
 // Hanya return kategori: kritis (< −27 dBm) dan waspada (−27 s/d −25 dBm).
 // Counts mencakup semua kategori untuk ditampilkan sebagai statistik konteks.
-function mon_signal_list(): array {
+// $includeAll: kalau true, sertakan SEMUA kategori (termasuk 'bagus'/aman) —
+// dipakai pengecekan alert untuk mendeteksi ONU yang sinyalnya sudah pulih.
+// Default false (perilaku lama, hanya kritis+waspada) dipakai halaman UI.
+function mon_signal_list(bool $includeAll = false): array {
     $m   = db_row("SELECT MAX(last_inform) x FROM genieacs_devices_cache");
     $ref = ($m && $m['x']) ? strtotime($m['x']) : time();
 
@@ -295,8 +314,9 @@ function mon_signal_list(): array {
 
         $counts[$cat]++;
 
-        // Hanya masukkan ke daftar jika sinyal bermasalah (early warning).
-        if (!in_array($cat, ['kritis', 'waspada'])) continue;
+        // Hanya masukkan ke daftar jika sinyal bermasalah (early warning),
+        // kecuali diminta semua kategori.
+        if (!$includeAll && !in_array($cat, ['kritis', 'waspada'])) continue;
 
         $out[] = [
             'device_id'   => $r['device_id'],
@@ -463,4 +483,143 @@ function mon_overview(): array {
     arsort($jenis);
 
     return ['total' => count($rows), 'ref' => $ref, 'jenis' => $jenis, 'status' => $status, 'rx' => $rx, 'temp' => $temp];
+}
+
+// ============================================================
+//  ALERT TELEGRAM — hanya kirim saat status BERUBAH (anti-spam)
+//  Dipanggil dari worker.php sesudah tiap siklus acs:sync.
+// ============================================================
+
+// Ambang batas (detik/jumlah) — diseragamkan di sini biar gampang diubah.
+const MON_ALERT_CLUSTER_MIN   = 3;     // ONU offline bareng di 1 area → alert cluster
+const MON_ALERT_OFFLINE_MIN_S = 1800;  // 30 menit → alert individual (di luar cluster)
+
+function mon_alert_get_state(string $key): ?string {
+    $r = db_row("SELECT state FROM monitor_alert_state WHERE alert_key = ?", [$key]);
+    return $r ? $r['state'] : null;
+}
+
+function mon_alert_set_state(string $key, string $state, ?string $context = null): void {
+    db_query(
+        "INSERT INTO monitor_alert_state (alert_key, state, context, updated_at)
+         VALUES (?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE state = VALUES(state), context = VALUES(context), updated_at = NOW()",
+        [$key, $state, $context]
+    );
+}
+
+function mon_alert_waktu(): string {
+    return tgl_indo(date('Y-m-d H:i:s'), true);
+}
+
+// Cek perubahan status ONU offline: cluster per area + individual (>30 mnt),
+// kirim notifikasi Telegram hanya saat status baru berubah (naik/pulih).
+function mon_check_alerts_offline(): void {
+    $data          = mon_offline_by_area();
+    $clusterActive = [];
+
+    // 1) Cluster per area.
+    foreach ($data['areas'] as $area => $list) {
+        $count = count($list);
+        $key   = 'offline_cluster:' . $area;
+        $old   = mon_alert_get_state($key);
+
+        if ($count >= MON_ALERT_CLUSTER_MIN) {
+            $clusterActive[$area] = true;
+            if ($old !== 'active') {
+                $nama = array_map(fn($o) => $o['pelanggan'], array_slice($list, 0, 5));
+                $sisa = count($list) - count($nama);
+                $msg  = "🔴 *GANGGUAN CLUSTER — {$area}*\n"
+                      . "{$count} ONU offline bersamaan di area ini, kemungkinan gangguan listrik/kabel.\n\n"
+                      . implode("\n", array_map(fn($n) => "• $n", $nama))
+                      . ($sisa > 0 ? "\n+{$sisa} lainnya" : '')
+                      . "\n\n🕐 " . mon_alert_waktu();
+                kirim_telegram($msg);
+                mon_alert_set_state($key, 'active', $area);
+            }
+        } elseif ($old === 'active') {
+            $msg = "✅ *Cluster {$area} sudah pulih*\nONU di area ini sudah kembali online.\n\n🕐 " . mon_alert_waktu();
+            kirim_telegram($msg);
+            mon_alert_set_state($key, 'resolved', $area);
+        }
+    }
+
+    // 2) Individual (>30 menit terus-menerus), skip area yang sedang cluster-aktif.
+    $currentOfflineIds = [];
+    foreach ($data['areas'] as $area => $list) {
+        foreach ($list as $onu) {
+            $currentOfflineIds[] = $onu['device_id'];
+            if (isset($clusterActive[$area])) continue;
+
+            $durasi = $onu['durasi_detik'] ?? 0;
+            if ($durasi < MON_ALERT_OFFLINE_MIN_S) continue;
+
+            $key = 'offline_individual:' . $onu['device_id'];
+            if (mon_alert_get_state($key) === 'active') continue;
+
+            $msg = "🟠 *ONU OFFLINE >30 menit*\n"
+                 . "Pelanggan : {$onu['pelanggan']}\n"
+                 . ($onu['pppoe'] ? "PPPoE     : {$onu['pppoe']}\n" : '')
+                 . "Area      : {$area}\n"
+                 . "Durasi    : " . mon_fmt_durasi($durasi) . "\n\n"
+                 . "🕐 " . mon_alert_waktu();
+            kirim_telegram($msg);
+            mon_alert_set_state($key, 'active', $onu['pelanggan']);
+        }
+    }
+
+    // 3) Pulih: individual yang tadinya offline-aktif, sekarang tidak offline lagi.
+    $rows = db_rows("SELECT alert_key, context FROM monitor_alert_state WHERE alert_key LIKE 'offline\\_individual:%' AND state = 'active'");
+    foreach ($rows as $r) {
+        $deviceId = substr($r['alert_key'], strlen('offline_individual:'));
+        if (in_array($deviceId, $currentOfflineIds, true)) continue;
+        $msg = "✅ *{$r['context']} sudah online kembali*\n\n🕐 " . mon_alert_waktu();
+        kirim_telegram($msg);
+        mon_alert_set_state($r['alert_key'], 'resolved', $r['context']);
+    }
+}
+
+// Cek perubahan kategori sinyal (kritis/waspada/aman) per ONU,
+// kirim notifikasi hanya saat kategori berubah dari sebelumnya.
+function mon_check_alerts_signal(): void {
+    $rows = mon_signal_list(true)['rows']; // true = sertakan semua kategori
+
+    foreach ($rows as $r) {
+        if ($r['kategori'] === 'no_data') continue; // data tak cukup, jangan sentuh state
+
+        $simplified = in_array($r['kategori'], ['kritis', 'waspada']) ? $r['kategori'] : 'aman';
+        $key        = 'signal:' . $r['device_id'];
+        $old        = mon_alert_get_state($key);
+        if ($old === $simplified) continue; // tidak berubah, skip
+
+        $rxTxt = $r['rx'] !== null ? number_format($r['rx'], 1) . ' dBm' : '—';
+
+        if ($simplified === 'kritis') {
+            $msg = "🔴 *SINYAL KRITIS*\n"
+                 . "Pelanggan : {$r['pelanggan']}\n"
+                 . "RXPower   : {$rxTxt}\n"
+                 . "Area      : {$r['area']}\n"
+                 . "⚠️ Berisiko putus, perlu ditindak segera.\n\n"
+                 . "🕐 " . mon_alert_waktu();
+            kirim_telegram($msg);
+        } elseif ($simplified === 'waspada') {
+            $msg = "🟡 *SINYAL WASPADA*\n"
+                 . "Pelanggan : {$r['pelanggan']}\n"
+                 . "RXPower   : {$rxTxt}\n"
+                 . "Area      : {$r['area']}\n\n"
+                 . "🕐 " . mon_alert_waktu();
+            kirim_telegram($msg);
+        } elseif ($old === 'kritis' || $old === 'waspada') { // aman, & sebelumnya bermasalah
+            $msg = "✅ *Sinyal {$r['pelanggan']} sudah membaik*\nRXPower sekarang: {$rxTxt}\n\n🕐 " . mon_alert_waktu();
+            kirim_telegram($msg);
+        }
+
+        mon_alert_set_state($key, $simplified, $r['pelanggan']);
+    }
+}
+
+// Entry point tunggal — dipanggil worker.php sesudah tiap acs:sync.
+function mon_check_alerts(): void {
+    mon_check_alerts_offline();
+    mon_check_alerts_signal();
 }

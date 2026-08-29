@@ -7,6 +7,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/helper.php';
 require_once __DIR__ . '/mikrotik.php';
 require_once __DIR__ . '/acs.php';
+require_once __DIR__ . '/telegram.php';
 
 // Script CLI (cron) tidak punya konteks HTTP/session — skip header & session.
 if (PHP_SAPI !== 'cli') {

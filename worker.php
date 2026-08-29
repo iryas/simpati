@@ -154,6 +154,18 @@ function acs_sync_run(): void {
     wa_log("Sync device ONU dari GenieACS (NBI)...");
     $res = acs_sync_devices();
     wa_log(($res['ok'] ? '✓ ' : '✗ ') . $res['msg']);
+
+    // Cek perubahan status ONU offline & sinyal, kirim notifikasi Telegram
+    // kalau ada perubahan. Hanya jalan kalau sync-nya sendiri berhasil
+    // (cache basi tidak perlu dicek — bisa memicu alert palsu).
+    if ($res['ok']) {
+        require_once __DIR__ . '/monitoring/_data.php';
+        try {
+            mon_check_alerts();
+        } catch (\Throwable $e) {
+            wa_log("✗ Alert check error: " . $e->getMessage());
+        }
+    }
 }
 
 // ── ACS: loop sync terus-menerus (default tiap 1 menit) ──────

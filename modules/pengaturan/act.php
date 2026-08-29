@@ -86,6 +86,41 @@ switch ($action) {
         flash('success', 'Pengaturan WhatsApp Gateway berhasil disimpan.');
         redirect($back_url);
 
+    case 'save_telegram':
+        if (!csrf_verify()) {
+            flash('danger', 'Token tidak valid.');
+            redirect($back_url);
+        }
+
+        $telegram_aktif     = post('telegram_aktif') === '1' ? '1' : '0';
+        $telegram_bot_token = mb_substr(trim(post('telegram_bot_token')), 0, 200);
+        $telegram_chat_id   = mb_substr(trim(post('telegram_chat_id')), 0, 60);
+
+        foreach ([
+            'telegram_aktif'     => $telegram_aktif,
+            'telegram_bot_token' => $telegram_bot_token,
+            'telegram_chat_id'   => $telegram_chat_id,
+        ] as $key => $val) {
+            db_query(
+                "INSERT INTO app_settings (setting_key, setting_val)
+                 VALUES (?, ?)
+                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val), updated_at = NOW()",
+                [$key, $val]
+            );
+        }
+
+        flash('success', 'Pengaturan Telegram berhasil disimpan.');
+        redirect($back_url);
+
+    case 'test_telegram':
+        if (!csrf_verify()) {
+            json_res(false, 'Sesi kedaluwarsa, muat ulang halaman.');
+        }
+        $token  = trim(post('telegram_bot_token'));
+        $chatId = trim(post('telegram_chat_id'));
+        $result = telegram_test($token, $chatId);
+        json_res($result['ok'], $result['msg']);
+
     default:
         redirect($back_url);
 }

@@ -17,8 +17,11 @@ if (isset($_GET['wifi'])) {
 }
 
 $list  = mon_onu_list();
-$count = ['all' => count($list), 'online' => 0, 'offline' => 0, 'isolir' => 0];
-foreach ($list as $r) $count[$r['status']]++;
+$count = ['all' => count($list), 'online' => 0, 'offline' => 0, 'isolir' => 0, 'unmapped' => 0];
+foreach ($list as $r) {
+    if (!$r['mapped']) { $count['unmapped']++; }
+    else { $count[$r['status']]++; }
+}
 
 $rows = array_map(function ($r) {
     return [
@@ -27,6 +30,7 @@ $rows = array_map(function ($r) {
         'area'        => $r['area'],
         'model'       => $r['model'],
         'status'      => $r['status'],
+        'mapped'      => $r['mapped'],
         'rx'          => $r['rx'],
         'last_inform' => $r['last_inform'],
     ];

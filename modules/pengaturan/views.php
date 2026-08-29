@@ -16,6 +16,9 @@ $wa_gateway          = app_setting('wa_gateway', 'wablas');
 $wablas_token        = app_setting('wablas_token', '');
 $wablas_secret       = app_setting('wablas_secret', '');
 $fonnte_token        = app_setting('fonnte_token', '');
+$telegram_aktif      = app_setting('telegram_aktif', '0');
+$telegram_bot_token  = app_setting('telegram_bot_token', '');
+$telegram_chat_id    = app_setting('telegram_chat_id', '');
 
 $page_title  = 'Pengaturan Aplikasi';
 $active_menu = 'pengaturan';
@@ -254,6 +257,85 @@ ob_start();
   </div>
 </div>
 
+<!-- Notifikasi Telegram (internal admin/teknisi) -->
+<div class="row mt-4">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <span><i class="fab fa-telegram mr-2" style="color:#229ED9"></i>Notifikasi Telegram (Admin/Teknisi)</span>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="<?= BASE_URL ?>modules/pengaturan/act.php" id="formTelegram">
+          <?php csrf_field(); ?>
+          <input type="hidden" name="action" value="save_telegram">
+
+          <div class="form-group">
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="telegram_aktif"
+                     name="telegram_aktif" value="1" <?= $telegram_aktif === '1' ? 'checked' : '' ?>>
+              <label class="custom-control-label font-weight-bold" for="telegram_aktif">
+                Aktifkan notifikasi Telegram
+              </label>
+            </div>
+            <small class="text-muted">
+              Kirim alert otomatis ke Telegram saat ONU offline (cluster/&gt;30 menit) atau sinyal
+              kritis/waspada. Dicek tiap kali <code>acs:sync</code> jalan.
+            </small>
+          </div>
+
+          <div class="form-group mb-2">
+            <label class="form-label font-weight-bold">Bot Token</label>
+            <div class="input-group">
+              <input type="password" name="telegram_bot_token" id="inputTelegramToken" class="form-control"
+                     value="<?= clean($telegram_bot_token) ?>" maxlength="200"
+                     placeholder="Dari @BotFather, mis. 123456:AAExxxxx">
+              <div class="input-group-append">
+                <button type="button" class="btn btn-outline-secondary btn-sm btn-toggle-secret"
+                        data-target="inputTelegramToken">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+            </div>
+            <small class="text-muted">Buat bot via @BotFather → <code>/newbot</code>, salin API Token-nya.</small>
+          </div>
+
+          <div class="form-group mb-2">
+            <label class="form-label font-weight-bold">Chat ID</label>
+            <input type="text" name="telegram_chat_id" id="inputTelegramChatId" class="form-control"
+                   value="<?= clean($telegram_chat_id) ?>" maxlength="60"
+                   placeholder="Mis. -1001234567890 (grup) atau 123456789 (pribadi)">
+            <small class="text-muted">
+              Kirim pesan ke bot/grup, lalu buka
+              <code>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code> untuk lihat <code>chat.id</code>.
+            </small>
+          </div>
+
+          <?php if ($telegram_bot_token && $telegram_chat_id): ?>
+          <div class="alert alert-success py-2 mb-3" style="font-size:13px">
+            <i class="fas fa-check-circle mr-1"></i>
+            Token &amp; Chat ID sudah tersimpan.
+            <?= $telegram_aktif === '1' ? 'Notifikasi <strong>aktif</strong>.' : 'Notifikasi saat ini <strong>nonaktif</strong>.' ?>
+          </div>
+          <?php else: ?>
+          <div class="alert alert-warning py-2 mb-3" style="font-size:13px">
+            <i class="fas fa-exclamation-triangle mr-1"></i>
+            Token dan Chat ID belum diisi lengkap.
+          </div>
+          <?php endif; ?>
+
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-save mr-1"></i>Simpan
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTestTelegram">
+            <i class="fas fa-paper-plane mr-1"></i>Tes Kirim
+          </button>
+          <span id="testTelegramResult" class="ml-2" style="font-size:12.5px"></span>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <?php
 $content  = ob_get_clean();
 $extra_js = <<<'JS'
@@ -280,6 +362,39 @@ $('input[name="wa_gateway"]').on('change', function () {
     $('#seksi_fonnte').hide();
     $('#seksi_wablas').show();
   }
+});
+
+// Tes kirim notifikasi Telegram (pakai nilai di form saat ini, walau belum disimpan)
+$('#btnTestTelegram').on('click', function () {
+  const btn    = $(this);
+  const result = $('#testTelegramResult');
+  const token  = $('#inputTelegramToken').val().trim();
+  const chatId = $('#inputTelegramChatId').val().trim();
+
+  if (!token || !chatId) {
+    result.html('<span class="text-danger"><i class="fas fa-times-circle mr-1"></i>Isi Token &amp; Chat ID dulu.</span>');
+    return;
+  }
+
+  btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Mengirim...');
+  result.html('');
+
+  $.post('act.php', {
+    action: 'test_telegram',
+    csrf_token: $('input[name="csrf_token"]').first().val(),
+    telegram_bot_token: token,
+    telegram_chat_id: chatId,
+  }).done(function (res) {
+    if (res.success) {
+      result.html('<span class="text-success"><i class="fas fa-check-circle mr-1"></i>' + res.msg + '</span>');
+    } else {
+      result.html('<span class="text-danger"><i class="fas fa-times-circle mr-1"></i>' + res.msg + '</span>');
+    }
+  }).fail(function () {
+    result.html('<span class="text-danger"><i class="fas fa-times-circle mr-1"></i>Gagal menghubungi server.</span>');
+  }).always(function () {
+    btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1"></i>Tes Kirim');
+  });
 });
 </script>
 JS;

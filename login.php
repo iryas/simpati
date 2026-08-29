@@ -12,6 +12,7 @@ if (is_logged_in()) redirect(BASE_URL . 'index.php');
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login — <?= APP_NAME ?></title>
+  <link rel="icon" type="image/svg+xml" href="<?= BASE_URL ?>assets/img/logo-icon.svg">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -222,7 +223,16 @@ if (is_logged_in()) redirect(BASE_URL . 'index.php');
     <div class="deco-circle deco-circle-2"></div>
     <div class="deco-circle deco-circle-3"></div>
 
-    <div class="brand-icon"><i class="fas fa-broadcast-tower"></i></div>
+    <div class="brand-icon">
+      <svg viewBox="0 0 200 200" width="40" height="40" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 26 92 L 93 25 Q 100 18 107 25 L 174 92" stroke-width="14"/>
+        <path d="M 44 88 L 44 148 Q 44 160 56 160" stroke-width="14"/>
+        <path d="M 156 88 L 156 148 Q 156 160 144 160" stroke-width="14"/>
+        <path d="M 84 128 Q 100 110 116 128" stroke-width="11"/>
+        <path d="M 68 106 Q 100 72 132 106" stroke-width="11"/>
+        <circle cx="100" cy="150" r="8" fill="currentColor" stroke="none"/>
+      </svg>
+    </div>
     <div class="brand-name"><?= APP_NAME ?></div>
     <div class="brand-sub">ISP Management System</div>
     <div class="brand-divider"></div>
