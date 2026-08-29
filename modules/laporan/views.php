@@ -6,20 +6,29 @@ require_once __DIR__ . '/../../system/init.php';
 auth_check();
 auth_role([ROLE_ADMIN, ROLE_KEUANGAN]);
 
-$tahun = (int)get('tahun', date('Y'));
-$bulan = get('bulan', date('Y-m'));
-$tipe  = get('tipe');
+$tahun    = (int)get('tahun', date('Y'));
+$bulan    = get('bulan', date('Y-m'));
+$tipe     = get('tipe');
+$paket_id = (int)get('paket_id', 0);
+$metode   = get('metode', '');
 
-// Pendapatan per bulan (12 bulan tahun ini)
+// Daftar paket untuk dropdown filter "Kategori Paket".
+$daftar_paket = db_rows("SELECT id, nama FROM paket ORDER BY nama");
+
+// Pendapatan per bulan (12 bulan tahun ini) — pakai bulan_tagihan (periode
+// tagihan) + terbayar (uang yg beneran diterima), SAMA seperti kartu "Total
+// Lunas" & tabel Detail Tagihan di bawah. Sebelumnya pakai tgl_bayar (tanggal
+// dibayar) + jumlah (tagihan kotor), bikin grafik beda angka dari tabel di
+// halaman yang sama untuk transaksi telat bayar / kena potongan.
 $per_bulan = db_rows(
-  "SELECT DATE_FORMAT(tgl_bayar,'%m') as bln,
-            SUM(jumlah) as total,
+  "SELECT RIGHT(bulan_tagihan, 2) as bln,
+            SUM(terbayar) as total,
             COUNT(*) as n
      FROM pembayaran
-     WHERE status='lunas' AND YEAR(tgl_bayar) = ?
-     GROUP BY DATE_FORMAT(tgl_bayar,'%m')
+     WHERE status='lunas' AND LEFT(bulan_tagihan, 4) = ?
+     GROUP BY bln
      ORDER BY bln ASC",
-  [$tahun]
+  [(string)$tahun]
 );
 $bulan_map = array_column($per_bulan, null, 'bln');
 
@@ -38,14 +47,14 @@ $rekap = db_row(
   [$bulan]
 );
 
-// Top 5 paket by pendapatan
+// Top 5 paket by pendapatan — konsisten pakai bulan_tagihan + terbayar.
 $top_paket = db_rows(
-  "SELECT pk.nama, COUNT(*) as n, SUM(py.jumlah) as total
+  "SELECT pk.nama, COUNT(*) as n, SUM(py.terbayar) as total
      FROM pembayaran py
      JOIN paket pk ON pk.id = py.paket_id
-     WHERE py.status='lunas' AND YEAR(py.tgl_bayar) = ?
+     WHERE py.status='lunas' AND LEFT(py.bulan_tagihan, 4) = ?
      GROUP BY py.paket_id ORDER BY total DESC LIMIT 5",
-  [$tahun]
+  [(string)$tahun]
 );
 
 // Detail bulan dipilih: tanpa potongan, dengan potongan, dan tunggakan
@@ -58,6 +67,16 @@ if ($tipe === 'tanpa_potongan') {
   $detailWhere .= " AND py.status='lunas' AND py.potongan > 0";
 } elseif ($tipe === 'tunggakan') {
   $detailWhere .= " AND py.status='belum'";
+}
+
+if ($paket_id > 0) {
+  $detailWhere .= " AND py.paket_id = ?";
+  $detailParams[] = $paket_id;
+}
+
+if (in_array($metode, ['tunai', 'transfer'], true)) {
+  $detailWhere .= " AND py.metode = ?";
+  $detailParams[] = $metode;
 }
 
 $detail = db_rows(
@@ -80,7 +99,7 @@ ob_start();
 
 <div class="page-header">
   <h5><i class="fas fa-chart-bar mr-2 text-primary"></i>Laporan Pendapatan</h5>
-  <a href="<?= BASE_URL ?>modules/laporan/act.php?action=export_csv&bulan=<?= urlencode($bulan) ?>"
+  <a href="<?= BASE_URL ?>modules/laporan/act.php?action=export_csv&bulan=<?= urlencode($bulan) ?>&tipe=<?= urlencode($tipe ?? '') ?>&paket_id=<?= $paket_id ?>&metode=<?= urlencode($metode) ?>"
     class="btn btn-success btn-sm">
     <i class="fas fa-file-csv mr-1"></i>Export CSV
   </a>
@@ -89,12 +108,19 @@ ob_start();
 <!-- Filter -->
 <div class="card mb-3">
   <div class="card-body py-2">
-    <form method="GET" class="form-inline" style="gap:8px">
+    <form method="GET" class="form-inline" style="gap:8px;row-gap:10px">
       <label class="mr-2 font-weight-bold" style="font-size:13px">Tahun:</label>
       <input type="number" name="tahun" class="form-control form-control-sm"
         value="<?= $tahun ?>" min="2020" max="<?= date('Y') ?>" style="width:90px">
       <label class="ml-3 mr-2 font-weight-bold" style="font-size:13px">Bulan Detail:</label>
       <input type="month" name="bulan" class="form-control form-control-sm" value="<?= $bulan ?>">
+      <label class="ml-3 mr-2 font-weight-bold" style="font-size:13px">Kategori Paket:</label>
+      <select name="paket_id" class="form-control form-control-sm">
+        <option value="0">Semua Paket</option>
+        <?php foreach ($daftar_paket as $p): ?>
+          <option value="<?= $p['id'] ?>" <?= $paket_id === (int)$p['id'] ? 'selected' : '' ?>><?= clean($p['nama']) ?></option>
+        <?php endforeach; ?>
+      </select>
       <label class="ml-3 mr-2 font-weight-bold" style="font-size:13px">Tipe:</label>
       <select name="tipe" class="form-control form-control-sm">
         <option value="">Semua Tipe</option>
@@ -102,10 +128,16 @@ ob_start();
         <option value="dengan_potongan" <?= $tipe === 'dengan_potongan' ? 'selected' : '' ?>>Dengan Potongan</option>
         <option value="tunggakan" <?= $tipe === 'tunggakan' ? 'selected' : '' ?>>Tunggakan</option>
       </select>
+      <label class="ml-3 mr-2 font-weight-bold" style="font-size:13px">Metode Pembayaran:</label>
+      <select name="metode" class="form-control form-control-sm">
+        <option value="">Semua Metode</option>
+        <option value="tunai" <?= $metode === 'tunai' ? 'selected' : '' ?>>Tunai</option>
+        <option value="transfer" <?= $metode === 'transfer' ? 'selected' : '' ?>>Transfer</option>
+      </select>
       <button type="submit" class="btn btn-primary btn-sm ml-2">
         <i class="fas fa-filter mr-1"></i>Terapkan
       </button>
-      <a href="<?= BASE_URL ?>modules/laporan/views.php?tahun=<?= $tahun ?>&bulan=<?= urlencode($bulan) ?>" class="btn btn-secondary btn-sm">Reset Tipe</a>
+      <a href="<?= BASE_URL ?>modules/laporan/views.php?tahun=<?= $tahun ?>&bulan=<?= urlencode($bulan) ?>" class="btn btn-secondary btn-sm">Reset Filter</a>
     </form>
   </div>
 </div>
