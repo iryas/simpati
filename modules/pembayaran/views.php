@@ -6,12 +6,15 @@ require_once __DIR__ . '/../../system/init.php';
 auth_check();
 auth_role([ROLE_ADMIN, ROLE_KEUANGAN]);
 
-$search = get('search');
-$status = get('status');
-$metode = get('metode');
-$bulan  = get('bulan', date('Y-m'));
+$search   = get('search');
+$status   = get('status');
+$metode   = get('metode');
+$tipe     = get('tipe');
+$paket_id = (int)get('paket_id', 0);
+$bulan    = get('bulan', date('Y-m'));
 
-$pelanggans = db_rows("SELECT id, nama, no_hp, paket_id FROM pelanggan WHERE status='aktif' ORDER BY nama");
+$pelanggans   = db_rows("SELECT id, nama, no_hp, paket_id FROM pelanggan WHERE status='aktif' ORDER BY nama");
+$daftar_paket = db_rows("SELECT id, nama FROM paket ORDER BY nama");
 $petugas    = db_rows("SELECT id, nama FROM pengguna WHERE role IN ('admin','keuangan') AND status='aktif' ORDER BY nama");
 
 // ── Setting tagihan ───────────────────────────────────────────
@@ -110,6 +113,18 @@ $tung = db_row(
         <option value="">Semua Status</option>
         <option value="lunas" <?= $status==='lunas'?'selected':'' ?>>Lunas</option>
         <option value="belum" <?= $status==='belum'?'selected':'' ?>>Belum Bayar</option>
+      </select>
+      <select name="tipe" class="form-control form-control-sm">
+        <option value="">Semua Tipe</option>
+        <option value="tanpa_potongan" <?= $tipe==='tanpa_potongan'?'selected':'' ?>>Tanpa Potongan</option>
+        <option value="dengan_potongan" <?= $tipe==='dengan_potongan'?'selected':'' ?>>Dengan Potongan</option>
+        <option value="tunggakan" <?= $tipe==='tunggakan'?'selected':'' ?>>Tunggakan</option>
+      </select>
+      <select name="paket_id" class="form-control form-control-sm">
+        <option value="0">Semua Paket</option>
+        <?php foreach ($daftar_paket as $p): ?>
+          <option value="<?= $p['id'] ?>" <?= $paket_id === (int)$p['id'] ? 'selected' : '' ?>><?= clean($p['nama']) ?></option>
+        <?php endforeach; ?>
       </select>
       <select name="metode" class="form-control form-control-sm">
         <option value="">Semua Metode</option>
@@ -472,6 +487,8 @@ $bulan_json   = json_encode($bulan);
 $search_json  = json_encode($search);
 $status_json  = json_encode($status);
 $metode_json  = json_encode($metode);
+$tipe_json    = json_encode($tipe);
+$paket_json   = json_encode($paket_id);
 $today        = date('Y-m-d');
 
 $extra_js = <<<HTML
@@ -492,6 +509,8 @@ var tabelPembayaran = \$('#tabelPembayaran').DataTable({
       d.q             = {$search_json};
       d.status_filter = {$status_json};
       d.metode_filter = {$metode_json};
+      d.tipe_filter   = {$tipe_json};
+      d.paket_filter  = {$paket_json};
     }
   },
   columns: [

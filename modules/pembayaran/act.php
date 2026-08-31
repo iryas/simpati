@@ -33,6 +33,8 @@ switch ($action) {
         $status        = get('status_filter');
         $bulan         = get('bulan');
         $metode_filter = get('metode_filter');
+        $tipe_filter   = get('tipe_filter');
+        $paket_filter  = (int)get('paket_filter', 0);
 
         $where  = '1=1';
         $params = [];
@@ -53,6 +55,19 @@ switch ($action) {
         if (in_array($metode_filter, ['tunai', 'transfer'])) {
             $where   .= ' AND py.metode = ?';
             $params[] = $metode_filter;
+        }
+        // Tipe: sama seperti Laporan > Pendapatan — rincian lebih halus dari
+        // sekadar status lunas/belum (bedakan yang kena potongan atau tidak).
+        if ($tipe_filter === 'tanpa_potongan') {
+            $where .= " AND py.status='lunas' AND py.potongan = 0";
+        } elseif ($tipe_filter === 'dengan_potongan') {
+            $where .= " AND py.status='lunas' AND py.potongan > 0";
+        } elseif ($tipe_filter === 'tunggakan') {
+            $where .= " AND py.status='belum'";
+        }
+        if ($paket_filter > 0) {
+            $where   .= ' AND py.paket_id = ?';
+            $params[] = $paket_filter;
         }
 
         $orderCols = [3 => 'py.jumlah', 4 => 'py.terbayar', 5 => 'py.potongan', 6 => 'py.tgl_bayar', 9 => 'py.status'];

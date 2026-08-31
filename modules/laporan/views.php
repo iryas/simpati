@@ -11,6 +11,7 @@ $bulan    = get('bulan', date('Y-m'));
 $tipe     = get('tipe');
 $paket_id = (int)get('paket_id', 0);
 $metode   = get('metode', '');
+$q        = trim(get('q', ''));
 
 // Daftar paket untuk dropdown filter "Kategori Paket".
 $daftar_paket = db_rows("SELECT id, nama FROM paket ORDER BY nama");
@@ -57,37 +58,10 @@ $top_paket = db_rows(
   [(string)$tahun]
 );
 
-// Detail bulan dipilih: tanpa potongan, dengan potongan, dan tunggakan
-$detailWhere  = 'py.bulan_tagihan = ?';
-$detailParams = [$bulan];
-
-if ($tipe === 'tanpa_potongan') {
-  $detailWhere .= " AND py.status='lunas' AND py.potongan = 0";
-} elseif ($tipe === 'dengan_potongan') {
-  $detailWhere .= " AND py.status='lunas' AND py.potongan > 0";
-} elseif ($tipe === 'tunggakan') {
-  $detailWhere .= " AND py.status='belum'";
-}
-
-if ($paket_id > 0) {
-  $detailWhere .= " AND py.paket_id = ?";
-  $detailParams[] = $paket_id;
-}
-
-if (in_array($metode, ['tunai', 'transfer'], true)) {
-  $detailWhere .= " AND py.metode = ?";
-  $detailParams[] = $metode;
-}
-
-$detail = db_rows(
-  "SELECT py.*, pl.nama as nama_pelanggan, pk.nama as nama_paket
-     FROM pembayaran py
-     LEFT JOIN pelanggan pl ON pl.id = py.pelanggan_id
-     LEFT JOIN paket pk ON pk.id = py.paket_id
-     WHERE $detailWhere
-     ORDER BY py.status ASC, py.potongan ASC, py.id DESC",
-  $detailParams
-);
+// Detail bulan dipilih (tanpa potongan/dengan potongan/tunggakan) kini
+// ditampilkan lewat DataTable server-side — lihat modules/laporan/act.php
+// case 'datatable_detail'. Filter Tahun/Bulan/Kategori Paket/Tipe/Metode
+// di halaman ini cuma dikirim sebagai parameter AJAX ke situ.
 
 $nama_bulan = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -99,47 +73,10 @@ ob_start();
 
 <div class="page-header">
   <h5><i class="fas fa-chart-bar mr-2 text-primary"></i>Laporan Pendapatan</h5>
-  <a href="<?= BASE_URL ?>modules/laporan/act.php?action=export_csv&bulan=<?= urlencode($bulan) ?>&tipe=<?= urlencode($tipe ?? '') ?>&paket_id=<?= $paket_id ?>&metode=<?= urlencode($metode) ?>"
+  <a href="<?= BASE_URL ?>modules/laporan/act.php?action=export_csv&bulan=<?= urlencode($bulan) ?>&tipe=<?= urlencode($tipe ?? '') ?>&paket_id=<?= $paket_id ?>&metode=<?= urlencode($metode) ?>&q=<?= urlencode($q) ?>"
     class="btn btn-success btn-sm">
     <i class="fas fa-file-csv mr-1"></i>Export CSV
   </a>
-</div>
-
-<!-- Filter -->
-<div class="card mb-3">
-  <div class="card-body py-2">
-    <form method="GET" class="form-inline" style="gap:8px;row-gap:10px">
-      <label class="mr-2 font-weight-bold" style="font-size:13px">Tahun:</label>
-      <input type="number" name="tahun" class="form-control form-control-sm"
-        value="<?= $tahun ?>" min="2020" max="<?= date('Y') ?>" style="width:90px">
-      <label class="ml-3 mr-2 font-weight-bold" style="font-size:13px">Bulan Detail:</label>
-      <input type="month" name="bulan" class="form-control form-control-sm" value="<?= $bulan ?>">
-      <label class="ml-3 mr-2 font-weight-bold" style="font-size:13px">Kategori Paket:</label>
-      <select name="paket_id" class="form-control form-control-sm">
-        <option value="0">Semua Paket</option>
-        <?php foreach ($daftar_paket as $p): ?>
-          <option value="<?= $p['id'] ?>" <?= $paket_id === (int)$p['id'] ? 'selected' : '' ?>><?= clean($p['nama']) ?></option>
-        <?php endforeach; ?>
-      </select>
-      <label class="ml-3 mr-2 font-weight-bold" style="font-size:13px">Tipe:</label>
-      <select name="tipe" class="form-control form-control-sm">
-        <option value="">Semua Tipe</option>
-        <option value="tanpa_potongan" <?= $tipe === 'tanpa_potongan' ? 'selected' : '' ?>>Tanpa Potongan</option>
-        <option value="dengan_potongan" <?= $tipe === 'dengan_potongan' ? 'selected' : '' ?>>Dengan Potongan</option>
-        <option value="tunggakan" <?= $tipe === 'tunggakan' ? 'selected' : '' ?>>Tunggakan</option>
-      </select>
-      <label class="ml-3 mr-2 font-weight-bold" style="font-size:13px">Metode Pembayaran:</label>
-      <select name="metode" class="form-control form-control-sm">
-        <option value="">Semua Metode</option>
-        <option value="tunai" <?= $metode === 'tunai' ? 'selected' : '' ?>>Tunai</option>
-        <option value="transfer" <?= $metode === 'transfer' ? 'selected' : '' ?>>Transfer</option>
-      </select>
-      <button type="submit" class="btn btn-primary btn-sm ml-2">
-        <i class="fas fa-filter mr-1"></i>Terapkan
-      </button>
-      <a href="<?= BASE_URL ?>modules/laporan/views.php?tahun=<?= $tahun ?>&bulan=<?= urlencode($bulan) ?>" class="btn btn-secondary btn-sm">Reset Filter</a>
-    </form>
-  </div>
 </div>
 
 <!-- Rekap Cards -->
@@ -254,14 +191,82 @@ ob_start();
   </div>
 </div>
 
+<!-- Filter (khusus tabel Detail Tagihan & Export CSV di bawah — tidak
+     mempengaruhi kartu ringkasan/grafik di atas yang selalu 1 bulan/tahun
+     penuh) -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="GET" style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 16px">
+      <div>
+        <label class="d-block font-weight-bold mb-1" style="font-size:12px"><i class="fas fa-calendar-alt mr-1 text-primary"></i>Tahun</label>
+        <input type="number" name="tahun" class="form-control form-control-sm"
+          value="<?= $tahun ?>" min="2020" max="<?= date('Y') ?>" style="width:90px">
+      </div>
+      <div>
+        <label class="d-block font-weight-bold mb-1" style="font-size:12px"><i class="fas fa-calendar-day mr-1 text-primary"></i>Bulan Detail</label>
+        <input type="month" name="bulan" class="form-control form-control-sm" value="<?= $bulan ?>" style="width:150px">
+      </div>
+      <div>
+        <label class="d-block font-weight-bold mb-1" style="font-size:12px"><i class="fas fa-search mr-1 text-primary"></i>Cari Pelanggan</label>
+        <input type="text" name="q" class="form-control form-control-sm"
+          placeholder="Nama / No HP…" value="<?= clean($q) ?>" style="width:170px">
+      </div>
+      <div>
+        <label class="d-block font-weight-bold mb-1" style="font-size:12px"><i class="fas fa-box-open mr-1 text-primary"></i>Kategori Paket</label>
+        <select name="paket_id" class="form-control form-control-sm" style="width:170px">
+          <option value="0">Semua Paket</option>
+          <?php foreach ($daftar_paket as $p): ?>
+            <option value="<?= $p['id'] ?>" <?= $paket_id === (int)$p['id'] ? 'selected' : '' ?>><?= clean($p['nama']) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div>
+        <label class="d-block font-weight-bold mb-1" style="font-size:12px"><i class="fas fa-tags mr-1 text-primary"></i>Tipe</label>
+        <select name="tipe" class="form-control form-control-sm" style="width:170px">
+          <option value="">Semua Tipe</option>
+          <option value="tanpa_potongan" <?= $tipe === 'tanpa_potongan' ? 'selected' : '' ?>>Tanpa Potongan</option>
+          <option value="dengan_potongan" <?= $tipe === 'dengan_potongan' ? 'selected' : '' ?>>Dengan Potongan</option>
+          <option value="tunggakan" <?= $tipe === 'tunggakan' ? 'selected' : '' ?>>Tunggakan</option>
+        </select>
+      </div>
+      <div>
+        <label class="d-block font-weight-bold mb-1" style="font-size:12px"><i class="fas fa-money-bill-wave mr-1 text-primary"></i>Metode Pembayaran</label>
+        <select name="metode" class="form-control form-control-sm" style="width:170px">
+          <option value="">Semua Metode</option>
+          <option value="tunai" <?= $metode === 'tunai' ? 'selected' : '' ?>>Tunai</option>
+          <option value="transfer" <?= $metode === 'transfer' ? 'selected' : '' ?>>Transfer</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="fas fa-filter mr-1"></i>Terapkan
+        </button>
+        <a href="<?= BASE_URL ?>modules/laporan/views.php?tahun=<?= $tahun ?>&bulan=<?= urlencode($bulan) ?>" class="btn btn-secondary btn-sm">Reset Filter</a>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Detail Transaksi -->
 <div class="card">
   <div class="card-header">
     <span><i class="fas fa-list mr-2"></i>Detail Tagihan — <?= date('F Y', strtotime($bulan . '-01')) ?></span>
   </div>
-  <div class="card-body p-0">
+  <div class="card-body p-2">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-2" style="gap:8px">
+      <div class="d-flex align-items-center" style="gap:6px">
+        <label class="mb-0 text-muted" style="font-size:13px">Tampilkan</label>
+        <select id="lengthDetailTagihan" class="form-control form-control-sm" style="width:70px">
+          <option value="15">15</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+        <label class="mb-0 text-muted" style="font-size:13px">entri</label>
+      </div>
+    </div>
     <div class="table-responsive">
-      <table class="table table-hover mb-0">
+      <table id="tabelDetailTagihan" class="table table-hover mb-0 w-100">
         <thead>
           <tr>
             <th>#</th>
@@ -275,52 +280,7 @@ ob_start();
             <th>Tipe</th>
           </tr>
         </thead>
-        <tbody>
-          <?php if ($detail): foreach ($detail as $i => $d): ?>
-              <?php
-              if ($d['status'] === 'belum') {
-                $tipe = '<span class="badge badge-danger">Tunggakan</span>';
-              } elseif ((int)$d['potongan'] > 0) {
-                $tipe = '<span class="badge badge-warning">Dengan Potongan</span>';
-              } else {
-                $tipe = '<span class="badge badge-success">Tanpa Potongan</span>';
-              }
-              ?>
-              <tr>
-                <td><?= $i + 1 ?></td>
-                <td><?= clean($d['nama_pelanggan']) ?></td>
-                <td><?= clean($d['nama_paket'] ?? '—') ?></td>
-                <td><?= rupiah((int)$d['jumlah']) ?></td>
-                <td>
-                  <?php if ($d['status'] === 'lunas' && (int)$d['potongan'] > 0): ?>
-                    <?= (int)$d['potongan'] ?> hari
-                    <br><small class="text-danger">- <?= rupiah((int)$d['jumlah'] - (int)$d['terbayar']) ?></small>
-                  <?php else: ?>
-                    <span class="text-muted">—</span>
-                  <?php endif; ?>
-                </td>
-                <td><?= $d['status'] === 'lunas' ? rupiah((int)$d['terbayar']) : '<span class="text-muted">—</span>' ?></td>
-                <td>
-                  <?php if ($d['status'] === 'lunas'): ?>
-                    <?php if (($d['metode'] ?? 'tunai') === 'transfer'): ?>
-                      <span class="badge badge-info">Transfer</span>
-                    <?php else: ?>
-                      <span class="badge badge-secondary">Tunai</span>
-                    <?php endif; ?>
-                  <?php else: ?>
-                    <span class="text-muted">—</span>
-                  <?php endif; ?>
-                </td>
-                <td><?= $d['tgl_bayar'] ? tgl_indo($d['tgl_bayar']) : '<span class="text-muted">—</span>' ?></td>
-                <td><?= $tipe ?></td>
-              </tr>
-            <?php endforeach;
-          else: ?>
-            <tr>
-              <td colspan="9" class="text-center text-muted py-4">Tidak ada data tagihan pada bulan ini.</td>
-            </tr>
-          <?php endif; ?>
-        </tbody>
+        <tbody></tbody>
       </table>
     </div>
   </div>
@@ -371,5 +331,57 @@ ob_start();
 </script>
 
 <?php
-$content = ob_get_clean();
+$content     = ob_get_clean();
+$bulan_json  = json_encode($bulan);
+$tipe_json   = json_encode($tipe ?? '');
+$paket_json  = json_encode($paket_id);
+$metode_json = json_encode($metode);
+$q_json      = json_encode($q);
+
+// DataTable server-side init HARUS lewat $extra_js (dirender template.php
+// setelah jQuery/DataTables dimuat) — bukan inline di $content, yang
+// dirender SEBELUM library JS-nya (baru kemudian ketauan sumber error
+// "$ is not defined" yang sempat muncul di halaman lain).
+// Toolbar & konfigurasi (dom, searching:false, custom "Tampilkan X entri")
+// disamakan persis dengan pola DataTable di modul Pembayaran/Pelanggan.
+$extra_js = <<<HTML
+<script>
+var tabelDetailTagihan = \$('#tabelDetailTagihan').DataTable({
+  serverSide: true,
+  processing: true,
+  searching: false,
+  dom: 'rt<"d-flex justify-content-between align-items-center mt-2 flex-wrap"ip>',
+  pageLength: 15,
+  order: [[7, 'desc']],
+  language: { emptyTable:'Tidak ada data tagihan pada bulan ini.',info:'Menampilkan _START_-_END_ dari _TOTAL_ entri',infoEmpty:'0 entri',infoFiltered:'(dari _MAX_ total)',lengthMenu:'Tampilkan _MENU_ entri',loadingRecords:'Memuat...',processing:'Memproses...',zeroRecords:'Data tidak ditemukan',paginate:{first:'Pertama',last:'Terakhir',next:'›',previous:'‹'} },
+  ajax: {
+    url: 'act.php',
+    data: function (d) {
+      d.action   = 'datatable_detail';
+      d.bulan    = {$bulan_json};
+      d.tipe     = {$tipe_json};
+      d.paket_id = {$paket_json};
+      d.metode   = {$metode_json};
+      d.q        = {$q_json};
+    }
+  },
+  columns: [
+    { data: 'no', orderable: false },
+    { data: 'pelanggan' },
+    { data: 'paket', orderable: false },
+    { data: 'jumlah', orderable: true },
+    { data: 'potongan', orderable: false },
+    { data: 'terbayar' },
+    { data: 'metode', orderable: false },
+    { data: 'tgl_bayar' },
+    { data: 'tipe', orderable: false },
+  ],
+});
+
+\$('#lengthDetailTagihan').on('change', function () {
+  tabelDetailTagihan.page.len(parseInt(\$(this).val())).draw();
+});
+</script>
+HTML;
+
 require_once __DIR__ . '/../../template.php';
