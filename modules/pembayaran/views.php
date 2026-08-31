@@ -114,11 +114,10 @@ $tung = db_row(
         <option value="lunas" <?= $status==='lunas'?'selected':'' ?>>Lunas</option>
         <option value="belum" <?= $status==='belum'?'selected':'' ?>>Belum Bayar</option>
       </select>
-      <select name="tipe" class="form-control form-control-sm">
+      <select name="tipe" class="form-control form-control-sm" title="Rincian tambahan untuk yang sudah Lunas — pakai dropdown Status untuk Belum Bayar/Tunggakan">
         <option value="">Semua Tipe</option>
         <option value="tanpa_potongan" <?= $tipe==='tanpa_potongan'?'selected':'' ?>>Tanpa Potongan</option>
         <option value="dengan_potongan" <?= $tipe==='dengan_potongan'?'selected':'' ?>>Dengan Potongan</option>
-        <option value="tunggakan" <?= $tipe==='tunggakan'?'selected':'' ?>>Tunggakan</option>
       </select>
       <select name="paket_id" class="form-control form-control-sm">
         <option value="0">Semua Paket</option>

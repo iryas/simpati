@@ -615,7 +615,18 @@ ob_start();
   </div>
 </div>
 
-<?php if ($is_admin): ?>
+<?php endif; ?>
+
+<?php
+$content = ob_get_clean();
+
+// Script isolir massal PINDAH ke sini (ditangkap $extra_js, dirender
+// template.php SESUDAH jQuery/toastr dimuat) — sebelumnya ikut ke-capture
+// $content yang dirender SEBELUM library JS-nya, jadi selalu error
+// "$ is not defined" begitu halaman Dashboard dibuka.
+ob_start();
+if ($is_admin):
+?>
 <script>
 (function () {
   const BASE = '<?= BASE_URL ?>';
@@ -677,13 +688,8 @@ ob_start();
 })();
 </script>
 <?php endif; ?>
-<?php endif; ?>
 
-<?php
-$content = ob_get_clean();
-
-ob_start();
-if ($wa_gagal_count > 0):
+<?php if ($wa_gagal_count > 0):
     $csrf_wa = csrf_token();
 ?>
 <script>

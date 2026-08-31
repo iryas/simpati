@@ -11,14 +11,18 @@ auth_role([ROLE_ADMIN, ROLE_KEUANGAN]);
 $tahun = (int)get('tahun', date('Y'));
 $bulan = get('bulan', date('Y-m'));
 
-// Omset per bulan (12 bulan tahun ini)
+// Omset per bulan (12 bulan tahun ini) — pakai bulan_tagihan (periode
+// tagihan), SAMA seperti kartu "Omset" di bawah. Sebelumnya pakai tgl_bayar
+// (tanggal bayar aktual), jadi grafik bisa beda angka dari kartu ringkasan
+// untuk transaksi yang dibayar telat lintas bulan (bug yang sama seperti
+// yang sudah diperbaiki di Laporan > Pendapatan).
 $per_bulan_omset = db_rows(
-  "SELECT DATE_FORMAT(tgl_bayar,'%m') as bln, SUM(terbayar) as total
+  "SELECT RIGHT(bulan_tagihan, 2) as bln, SUM(terbayar) as total
      FROM pembayaran
-     WHERE status='lunas' AND YEAR(tgl_bayar) = ?
-     GROUP BY DATE_FORMAT(tgl_bayar,'%m')
+     WHERE status='lunas' AND LEFT(bulan_tagihan, 4) = ?
+     GROUP BY bln
      ORDER BY bln ASC",
-  [$tahun]
+  [(string)$tahun]
 );
 $bulan_omset_map = array_column($per_bulan_omset, null, 'bln');
 

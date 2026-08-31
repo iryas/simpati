@@ -56,14 +56,15 @@ switch ($action) {
             $where   .= ' AND py.metode = ?';
             $params[] = $metode_filter;
         }
-        // Tipe: sama seperti Laporan > Pendapatan — rincian lebih halus dari
-        // sekadar status lunas/belum (bedakan yang kena potongan atau tidak).
+        // Tipe: rincian tambahan KHUSUS untuk yang sudah Lunas (kena potongan
+        // atau tidak) — beda tanggung jawab dari "status" (lunas/belum secara
+        // umum, dipilih lewat dropdown Status). "Tunggakan" sengaja tidak ada
+        // di sini lagi supaya tidak ada 2 jalan menuju hasil yang sama persis
+        // dengan Status=Belum Bayar.
         if ($tipe_filter === 'tanpa_potongan') {
             $where .= " AND py.status='lunas' AND py.potongan = 0";
         } elseif ($tipe_filter === 'dengan_potongan') {
             $where .= " AND py.status='lunas' AND py.potongan > 0";
-        } elseif ($tipe_filter === 'tunggakan') {
-            $where .= " AND py.status='belum'";
         }
         if ($paket_filter > 0) {
             $where   .= ' AND py.paket_id = ?';
