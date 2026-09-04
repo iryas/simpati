@@ -89,6 +89,35 @@ function mon_fmt_bytes(int $b, int $dec = 2): string {
     return number_format($b / (1024 ** $i), $dec) . ' ' . $u[$i];
 }
 
+// Berapa hari total periode tagihan (Y-m) berlangsung, dan sudah berjalan
+// berapa hari sampai sekarang — dipakai untuk hitung rata-rata PER HARI
+// (bytes_out itu kumulatif sejak awal periode, bukan snapshot 1 hari).
+// Pakai batas tgl_mulai_tagihan yang sama seperti label_periode_tagihan().
+function mon_periode_progres(string $bulan_ym): array {
+    $tgl_mulai = (int)app_setting('tgl_mulai_tagihan', '1');
+    $ts   = strtotime($bulan_ym . '-01');
+    $bln  = (int)date('n', $ts);
+    $thn  = (int)date('Y', $ts);
+    $tsStart = mktime(0, 0, 0, $bln, $tgl_mulai, $thn);
+    $tsEnd   = mktime(0, 0, 0, $bln + 1, $tgl_mulai, $thn); // awal hari SETELAH periode berakhir
+
+    $hariTotal = (int)round(($tsEnd - $tsStart) / 86400);
+
+    $now = time();
+    if ($now >= $tsEnd) {
+        $hariBerjalan = $hariTotal;           // periode sudah lewat (bulan lampau)
+    } elseif ($now < $tsStart) {
+        $hariBerjalan = 0;                    // periode belum mulai (jarang terjadi)
+    } else {
+        $hariBerjalan = (int)floor(($now - $tsStart) / 86400) + 1;
+    }
+
+    return [
+        'hari_total'    => $hariTotal,
+        'hari_berjalan' => max(1, $hariBerjalan),
+    ];
+}
+
 // Data pemakaian bandwidth lengkap per pelanggan & area untuk bulan tertentu.
 // $bulan: format 'Y-m', default bulan tagihan berjalan.
 // Kembalikan: summary, daftar pelanggan (diurutkan terbesar), breakdown per area, daftar bulan.
@@ -141,6 +170,14 @@ function mon_pemakaian_data(string $bulan = ''): array {
         ];
     }
 
+    // Progres periode & rata-rata harian (bytes_out kumulatif ÷ hari berjalan).
+    $progres      = mon_periode_progres($bulan);
+    $hariBerjalan = $progres['hari_berjalan'];
+    foreach ($out as &$row) {
+        $row['bytes_per_hari'] = (int)round($row['bytes_out'] / $hariBerjalan);
+    }
+    unset($row);
+
     // Breakdown per area (diurutkan terbesar).
     arsort($areaBytes);
     $areas = [];
@@ -154,13 +191,16 @@ function mon_pemakaian_data(string $bulan = ''): array {
 
     $count = count($out);
     return [
-        'bulan'       => $bulan,
-        'bulan_list'  => $bulanList,
-        'total_bytes' => $totalBytes,
-        'avg_bytes'   => $count > 0 ? (int)($totalBytes / $count) : 0,
-        'count'       => $count,
-        'rows'        => $out,
-        'areas'       => $areas,
+        'bulan'          => $bulan,
+        'bulan_list'     => $bulanList,
+        'total_bytes'    => $totalBytes,
+        'avg_bytes'      => $count > 0 ? (int)($totalBytes / $count) : 0,
+        'avg_bytes_hari' => $count > 0 ? (int)round(($totalBytes / $count) / $hariBerjalan) : 0,
+        'hari_total'     => $progres['hari_total'],
+        'hari_berjalan'  => $hariBerjalan,
+        'count'          => $count,
+        'rows'           => $out,
+        'areas'          => $areas,
     ];
 }
 

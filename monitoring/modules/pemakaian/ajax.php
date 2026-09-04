@@ -18,6 +18,9 @@ echo json_encode([
     'total_bytes' => $data['total_bytes'],
     'total_fmt'   => mon_fmt_bytes($data['total_bytes']),
     'avg_fmt'     => mon_fmt_bytes($data['avg_bytes']),
+    'avg_hari_fmt'  => mon_fmt_bytes($data['avg_bytes_hari']),
+    'hari_total'    => $data['hari_total'],
+    'hari_berjalan' => $data['hari_berjalan'],
     'area_count'  => count($data['areas']),
     'top'         => $top ? ['pelanggan' => $top['pelanggan'], 'bytes' => mon_fmt_bytes((int)$top['bytes_out']), 'area' => $top['area']] : null,
 ], JSON_UNESCAPED_UNICODE);

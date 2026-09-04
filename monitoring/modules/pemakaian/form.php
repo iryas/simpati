@@ -14,8 +14,11 @@ $bulan      = $data['bulan'];
 $bulanList  = $data['bulan_list'];
 $rows       = $data['rows'];
 $areas      = $data['areas'];
-$totalBytes = $data['total_bytes'];
-$avgBytes   = $data['avg_bytes'];
+$totalBytes   = $data['total_bytes'];
+$avgBytes     = $data['avg_bytes'];
+$avgBytesHari = $data['avg_bytes_hari'];
+$hariTotal    = $data['hari_total'];
+$hariBerjalan = $data['hari_berjalan'];
 $count      = $data['count'];
 $page_title = 'Pemakaian Bandwidth';
 
@@ -164,6 +167,11 @@ ob_start();
     <div class="sub">Dari <?= $count ?> pelanggan</div>
   </div>
   <div class="pk-tile">
+    <div class="lbl"><i class="fas fa-calendar-day" style="color:#22c55e"></i> Rata-rata Harian / Pelanggan</div>
+    <div class="val" style="color:#22c55e"><?= mon_fmt_bytes($avgBytesHari) ?></div>
+    <div class="sub">Hari ke-<?= $hariBerjalan ?> dari <?= $hariTotal ?></div>
+  </div>
+  <div class="pk-tile">
     <div class="lbl"><i class="fas fa-users" style="color:var(--ink2)"></i> Pelanggan Aktif</div>
     <div class="val" style="color:var(--ink)"><?= $count ?></div>
     <div class="sub">Punya data pemakaian</div>
@@ -216,6 +224,7 @@ ob_start();
           <th>Pelanggan</th>
           <th>Area</th>
           <th>Pemakaian</th>
+          <th>Rata-rata/Hari</th>
           <th>Durasi Online</th>
           <th>Update Terakhir</th>
         </tr>
@@ -238,6 +247,7 @@ ob_start();
               <div class="pk-use-bar-bg"><div class="pk-use-bar" style="width:<?= $pct ?>%"></div></div>
             </div>
           </td>
+          <td class="pk-up"><?= mon_fmt_bytes((int)$r['bytes_per_hari']) ?>/hr</td>
           <td class="pk-up"><?= pk_fmt_uptime((int)$r['uptime_sec']) ?></td>
           <td class="pk-poll"><?= $r['last_poll'] ? tgl_indo($r['last_poll'], true) : '—' ?></td>
         </tr>
