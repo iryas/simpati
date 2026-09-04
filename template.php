@@ -242,6 +242,11 @@ $user = current_user();
             <i class="fab fa-whatsapp"></i><span>Template WA</span>
           </a>
         </li>
+        <li class="nav-item <?= ($active_menu ?? '') === 'backup' ? 'active' : '' ?>">
+          <a href="<?= BASE_URL ?>modules/backup/views.php">
+            <i class="fas fa-database"></i><span>Backup Database</span>
+          </a>
+        </li>
       <?php endif; ?>
 
         <li class="nav-item <?= ($active_menu ?? '') === 'tentang' ? 'active' : '' ?>">
