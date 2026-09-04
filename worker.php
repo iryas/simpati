@@ -119,6 +119,8 @@ function usage_poll(): void {
                 'last_uptime_snapshot' => $uptime_sec,
                 'last_poll_at'         => date('Y-m-d H:i:s'),
             ], 'pelanggan_id = ? AND bulan_tagihan = ?', [$pelanggan_id, $bulan]);
+
+            usage_catat_harian($pelanggan_id, $bytes_inc, $uptime_inc);
         } else {
             db_insert('usage_pppoe', [
                 'pelanggan_id'         => $pelanggan_id,
@@ -129,11 +131,46 @@ function usage_poll(): void {
                 'last_uptime_snapshot' => $uptime_sec,
                 'last_poll_at'         => date('Y-m-d H:i:s'),
             ]);
+
+            // Pertama kali pelanggan ini kepoll bulan ini: seluruh bytes_out/uptime_sec
+            // saat ini dianggap increment awal (sama seperti nilai yang di-insert di atas).
+            usage_catat_harian($pelanggan_id, $bytes_out, $uptime_sec);
         }
         $updated++;
     }
 
     wa_log("✓ Selesai — update: $updated, skip (tidak terdaftar): $skipped");
+}
+
+// Catat increment bytes & uptime dari satu poll ke baris TANGGAL HARI INI
+// di usage_pppoe_harian (dasar buat modal "Detail Pemakaian Harian").
+// Delta yang sama dengan yang ditambahkan ke usage_pppoe (per bulan), cuma
+// dikreditkan ke tanggal poll berjalan — bukan didistribusikan mundur kalau
+// pollingnya lewat tengah malam (pendekatan yang sama seperti counter bulanan).
+function usage_catat_harian(int $pelanggan_id, int $bytes_inc, int $uptime_inc): void {
+    $tanggal = date('Y-m-d');
+
+    $existing = db_row(
+        "SELECT bytes_out, uptime_seconds FROM usage_pppoe_harian
+         WHERE pelanggan_id = ? AND tanggal = ?",
+        [$pelanggan_id, $tanggal]
+    );
+
+    if ($existing) {
+        db_update('usage_pppoe_harian', [
+            'bytes_out'      => (int)$existing['bytes_out'] + $bytes_inc,
+            'uptime_seconds' => (int)$existing['uptime_seconds'] + $uptime_inc,
+            'last_poll_at'   => date('Y-m-d H:i:s'),
+        ], 'pelanggan_id = ? AND tanggal = ?', [$pelanggan_id, $tanggal]);
+    } else {
+        db_insert('usage_pppoe_harian', [
+            'pelanggan_id'   => $pelanggan_id,
+            'tanggal'        => $tanggal,
+            'bytes_out'      => $bytes_inc,
+            'uptime_seconds' => $uptime_inc,
+            'last_poll_at'   => date('Y-m-d H:i:s'),
+        ]);
+    }
 }
 
 // ── Usage: loop terus-menerus (poll tiap N menit) ────────────

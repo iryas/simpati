@@ -134,7 +134,7 @@ function mon_pemakaian_data(string $bulan = ''): array {
 
     // Data per pelanggan.
     $rows = db_rows(
-        "SELECT p.nama AS pelanggan, a.nama AS area,
+        "SELECT p.id AS pelanggan_id, p.nama AS pelanggan, a.nama AS area,
                 u.bytes_out, u.uptime_seconds, u.last_poll_at
          FROM usage_pppoe u
          JOIN pelanggan p ON p.id = u.pelanggan_id
@@ -161,12 +161,13 @@ function mon_pemakaian_data(string $bulan = ''): array {
         $areaCount[$area] = ($areaCount[$area] ?? 0) + 1;
 
         $out[] = [
-            'rank'       => $idx + 1,
-            'pelanggan'  => $r['pelanggan'] ?: '—',
-            'area'       => $area,
-            'bytes_out'  => $bytes,
-            'uptime_sec' => $uptime,
-            'last_poll'  => $r['last_poll_at'] ?? null,
+            'rank'          => $idx + 1,
+            'pelanggan_id'  => (int)$r['pelanggan_id'],
+            'pelanggan'     => $r['pelanggan'] ?: '—',
+            'area'          => $area,
+            'bytes_out'     => $bytes,
+            'uptime_sec'    => $uptime,
+            'last_poll'     => $r['last_poll_at'] ?? null,
         ];
     }
 
@@ -201,6 +202,70 @@ function mon_pemakaian_data(string $bulan = ''): array {
         'count'          => $count,
         'rows'           => $out,
         'areas'          => $areas,
+    ];
+}
+
+// Rincian pemakaian PER TANGGAL untuk 1 pelanggan, dalam periode tagihan
+// $bulan_ym. Dipakai modal "Detail Pemakaian Harian" di modul Pemakaian.
+// Tanggal yang belum ada baris di usage_pppoe_harian (sebelum fitur ini
+// jalan, atau pelanggan offline waktu itu) ditandai bytes_out/uptime_seconds
+// null — TIDAK direkonstruksi/diestimasi, biar jujur ke datanya.
+function mon_pemakaian_harian(int $pelanggan_id, string $bulan_ym): array {
+    $pelanggan = db_row(
+        "SELECT p.nama, a.nama AS area FROM pelanggan p
+         LEFT JOIN area a ON a.id = p.area_id WHERE p.id = ?",
+        [$pelanggan_id]
+    );
+    if (!$pelanggan) {
+        return ['ok' => false, 'error' => 'Pelanggan tidak ditemukan'];
+    }
+
+    $tgl_mulai = (int)app_setting('tgl_mulai_tagihan', '1');
+    $ts   = strtotime($bulan_ym . '-01');
+    if ($ts === false) {
+        return ['ok' => false, 'error' => 'Bulan tidak valid'];
+    }
+    $bln  = (int)date('n', $ts);
+    $thn  = (int)date('Y', $ts);
+    $tsStart = mktime(0, 0, 0, $bln, $tgl_mulai, $thn);
+    $tsEnd   = mktime(0, 0, 0, $bln + 1, $tgl_mulai, $thn); // eksklusif
+    $tsBatas = min($tsEnd, strtotime('tomorrow')); // jangan tampilin tanggal yang belum terjadi
+
+    $rows = db_rows(
+        "SELECT tanggal, bytes_out, uptime_seconds FROM usage_pppoe_harian
+         WHERE pelanggan_id = ? AND tanggal >= ? AND tanggal < ?
+         ORDER BY tanggal ASC",
+        [$pelanggan_id, date('Y-m-d', $tsStart), date('Y-m-d', $tsEnd)]
+    );
+    $map = [];
+    foreach ($rows as $r) $map[$r['tanggal']] = $r;
+
+    $hariIni = date('Y-m-d');
+    $hari    = [];
+    for ($t = $tsStart; $t < $tsBatas; $t += 86400) {
+        $tgl = date('Y-m-d', $t);
+        $ada = isset($map[$tgl]);
+        $hari[] = [
+            'tanggal'        => $tgl,
+            'bytes_out'      => $ada ? (int)$map[$tgl]['bytes_out'] : null,
+            'uptime_seconds' => $ada ? (int)$map[$tgl]['uptime_seconds'] : null,
+            'hari_ini'       => $tgl === $hariIni,
+        ];
+    }
+
+    // Tanggal pertama yang punya data — buat catatan "mulai tercatat sejak".
+    $mulaiTercatat = null;
+    foreach ($hari as $h) {
+        if ($h['bytes_out'] !== null) { $mulaiTercatat = $h['tanggal']; break; }
+    }
+
+    return [
+        'ok'             => true,
+        'pelanggan'      => $pelanggan['nama'],
+        'area'           => $pelanggan['area'] ?: '—',
+        'periode_label'  => label_periode_tagihan($bulan_ym, $tgl_mulai),
+        'mulai_tercatat' => $mulaiTercatat,
+        'hari'           => $hari,
     ];
 }
 

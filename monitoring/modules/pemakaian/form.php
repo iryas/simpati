@@ -125,6 +125,47 @@ ob_start();
   .pk-empty{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:60px 24px;text-align:center}
   .pk-empty-icon{width:64px;height:64px;border-radius:18px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;
                  font-size:26px;background:#eff6ff;color:#0ea5e9}
+
+  /* ── Kolom Aksi + tombol Detail ── */
+  .pk-act{text-align:right}
+  .df-actbtn{display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:12px;font-weight:700;
+             color:var(--navy);background:#fff;border:1px solid var(--line);border-radius:9px;padding:6px 12px;cursor:pointer;transition:.12s;white-space:nowrap}
+  .df-actbtn:hover{border-color:var(--amber);background:#fffbeb;color:var(--warn)}
+
+  /* ── Modal Detail Pemakaian Harian ── */
+  .pd-ov{position:fixed;inset:0;background:rgba(15,39,68,.5);z-index:60;display:none;
+         align-items:flex-start;justify-content:center;padding:44px 16px;overflow-y:auto}
+  .pd-ov.show{display:flex}
+  .pd-modal{background:var(--card);border-radius:18px;box-shadow:0 20px 60px rgba(15,39,68,.35);width:100%;max-width:520px;overflow:hidden}
+  .pd-head{background:linear-gradient(120deg,#0a1e3d,#0f2744 55%,#173257);color:#fff;padding:18px 20px;display:flex;align-items:flex-start;gap:12px}
+  .pd-head .ic{width:40px;height:40px;border-radius:11px;background:rgba(245,158,11,.18);color:#fbbf24;
+               display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .pd-head h3{margin:0;font-size:16px;font-weight:800}
+  .pd-head p{margin:2px 0 0;font-size:12px;color:rgba(255,255,255,.6);word-break:break-word}
+  .pd-close{margin-left:auto;background:rgba(255,255,255,.12);border:0;color:#fff;width:30px;height:30px;
+            border-radius:8px;cursor:pointer;font-size:14px;line-height:1;flex-shrink:0}
+  .pd-close:hover{background:rgba(255,255,255,.2)}
+  .pd-body{padding:20px}
+  .pd-note{display:flex;gap:9px;align-items:flex-start;background:#eff6ff;color:#0ea5e9;border-radius:10px;
+           padding:11px 13px;font-size:12px;font-weight:600;line-height:1.5;margin-bottom:16px}
+  .pd-note b{color:#0369a1}
+  .pd-loading{text-align:center;padding:30px 0;color:var(--muted);font-size:13px}
+  table.pd-tbl{width:100%;border-collapse:collapse;font-size:13px}
+  .pd-tbl th{text-align:left;padding:8px 4px;font-size:10px;font-weight:700;color:var(--muted);
+             text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--line)}
+  .pd-tbl th.num{text-align:right}
+  .pd-tbl td{padding:8px 4px;border-bottom:1px solid var(--line);color:var(--ink2);font-weight:600}
+  .pd-tbl tbody tr:last-child td{border-bottom:none}
+  .pd-tbl td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:800;color:var(--navy)}
+  .pd-tbl td.dur{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink2);font-size:12.5px}
+  .pd-empty-row td{text-align:center;color:var(--muted);font-style:italic;font-weight:600;background:#fbfcfe}
+  .pd-today td{background:#fffbeb}
+  .pd-today td.num{color:var(--warn)}
+  .pd-today td.dur{color:var(--warn);font-weight:700}
+  .pd-foot{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end}
+  .pd-btn{font-family:inherit;font-size:13px;font-weight:700;padding:9px 16px;border-radius:10px;cursor:pointer;
+          border:1px solid var(--line);background:#fff;color:var(--ink2)}
+
   @media(max-width:600px){.pk-tiles{grid-template-columns:1fr 1fr}}
 </style>
 
@@ -227,6 +268,7 @@ ob_start();
           <th>Rata-rata/Hari</th>
           <th>Durasi Online</th>
           <th>Update Terakhir</th>
+          <th>Aksi</th>
         </tr>
       </thead>
       <tbody id="pkBody">
@@ -250,6 +292,11 @@ ob_start();
           <td class="pk-up"><?= mon_fmt_bytes((int)$r['bytes_per_hari']) ?>/hr</td>
           <td class="pk-up"><?= pk_fmt_uptime((int)$r['uptime_sec']) ?></td>
           <td class="pk-poll"><?= $r['last_poll'] ? tgl_indo($r['last_poll'], true) : '—' ?></td>
+          <td class="pk-act">
+            <button type="button" class="df-actbtn" onclick="pdOpen(<?= (int)$r['pelanggan_id'] ?>)">
+              <i class="fas fa-calendar-alt"></i> Detail
+            </button>
+          </td>
         </tr>
         <?php endforeach; ?>
       </tbody>
@@ -258,6 +305,36 @@ ob_start();
   </div>
 </div>
 <?php endif; ?>
+
+<!-- Modal: Detail Pemakaian Harian -->
+<div class="pd-ov" id="pdOverlay" data-bulan="<?= clean($bulan) ?>">
+  <div class="pd-modal">
+    <div class="pd-head">
+      <div class="ic"><i class="fas fa-calendar-alt"></i></div>
+      <div>
+        <h3>Pemakaian Harian</h3>
+        <p id="pdSub">—</p>
+      </div>
+      <button type="button" class="pd-close" onclick="pdClose()" aria-label="Tutup"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="pd-body">
+      <div class="pd-note" id="pdNote" style="display:none">
+        <i class="fas fa-info-circle" style="margin-top:1px"></i>
+        <span id="pdNoteText"></span>
+      </div>
+      <div class="pd-loading" id="pdLoading">Memuat…</div>
+      <table class="pd-tbl" id="pdTable" style="display:none">
+        <thead>
+          <tr><th>Tanggal</th><th class="num">Pemakaian</th><th class="num">Jam Aktif</th></tr>
+        </thead>
+        <tbody id="pdBody"></tbody>
+      </table>
+    </div>
+    <div class="pd-foot">
+      <button type="button" class="pd-btn" onclick="pdClose()">Tutup</button>
+    </div>
+  </div>
+</div>
 <?php
 $content = ob_get_clean();
 
@@ -288,6 +365,90 @@ $body_extra = <<<'HTML'
     if (areaSel) areaSel.addEventListener('change', applyFilter);
   }
 })();
+
+// ── Modal Detail Pemakaian Harian ──
+function pdRenderRows(hari){
+  var html = '';
+  var i = 0;
+  // Kelompokkan rentang KOSONG DI AWAL (sebelum data pertama ada) jadi 1 baris,
+  // biar nggak numpuk banyak baris "—" kalau fitur ini baru mulai jalan.
+  var leadEnd = 0;
+  while (leadEnd < hari.length && !hari[leadEnd].ada) leadEnd++;
+  if (leadEnd > 1) {
+    html += '<tr class="pd-empty-row"><td colspan="3">' +
+      hari[0].tanggal_fmt + ' – ' + hari[leadEnd - 1].tanggal_fmt + ' · belum tercatat</td></tr>';
+    i = leadEnd;
+  }
+  for (; i < hari.length; i++) {
+    var h   = hari[i];
+    var cls = h.hari_ini ? ' class="pd-today"' : '';
+    var tgl = h.tanggal_fmt + (h.hari_ini ? ' · Hari ini' : '');
+    html += '<tr' + cls + '><td>' + tgl + '</td><td class="num">' + h.bytes_fmt + '</td><td class="dur">' + h.jam_fmt + '</td></tr>';
+  }
+  return html || '<tr class="pd-empty-row"><td colspan="3">Belum ada data.</td></tr>';
+}
+
+function pdOpen(pelangganId){
+  var ov      = document.getElementById('pdOverlay');
+  var sub     = document.getElementById('pdSub');
+  var note    = document.getElementById('pdNote');
+  var noteTxt = document.getElementById('pdNoteText');
+  var loading = document.getElementById('pdLoading');
+  var table   = document.getElementById('pdTable');
+  var body    = document.getElementById('pdBody');
+  var bulan   = ov.dataset.bulan || '';
+
+  sub.textContent  = 'Memuat…';
+  note.style.display    = 'none';
+  table.style.display   = 'none';
+  loading.style.display = 'block';
+  loading.textContent   = 'Memuat…';
+  body.innerHTML = '';
+  ov.classList.add('show');
+  document.body.style.overflow = 'hidden';
+
+  fetch('detail_harian.php?pelanggan_id=' + encodeURIComponent(pelangganId) + '&bulan=' + encodeURIComponent(bulan),
+        {headers: {'X-Requested-With': 'fetch'}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d || !d.ok) {
+        loading.textContent = 'Gagal memuat data pemakaian harian.';
+        return;
+      }
+      sub.textContent = d.pelanggan + ' · ' + d.area + ' · ' + d.periode_label;
+
+      var hari0 = (d.hari && d.hari[0]) ? d.hari[0].tanggal : null;
+      if (!d.mulai_tercatat) {
+        noteTxt.textContent = 'Belum ada data harian tercatat untuk pelanggan ini di periode ini.';
+        note.style.display = 'flex';
+      } else if (d.mulai_tercatat !== hari0) {
+        noteTxt.innerHTML = 'Data harian mulai tercatat sejak <b>' + d.mulai_tercatat_fmt +
+          '</b>. Tanggal sebelumnya cuma ada total bulanan, belum ada rincian per hari.';
+        note.style.display = 'flex';
+      } else {
+        note.style.display = 'none';
+      }
+
+      body.innerHTML = pdRenderRows(d.hari || []);
+      loading.style.display = 'none';
+      table.style.display   = 'table';
+    })
+    .catch(function(){
+      loading.textContent = 'Gagal memuat data pemakaian harian.';
+    });
+}
+
+function pdClose(){
+  document.getElementById('pdOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') pdClose();
+});
+document.getElementById('pdOverlay') && document.getElementById('pdOverlay').addEventListener('click', function(e){
+  if (e.target === this) pdClose();
+});
 </script>
 HTML;
 
