@@ -269,6 +269,56 @@ function mon_pemakaian_harian(int $pelanggan_id, string $bulan_ym): array {
     ];
 }
 
+// Total pemakaian SEMUA PELANGGAN digabung, per tanggal, dalam periode
+// tagihan $bulan_ym. Dipakai kartu "Tren Pemakaian Harian" di modul
+// Pemakaian. Sama kaidahnya kayak mon_pemakaian_harian(): tanggal yang
+// belum ada baris usage_pppoe_harian ditandai null, tidak diestimasi.
+function mon_pemakaian_harian_total(string $bulan_ym): array {
+    $tgl_mulai = (int)app_setting('tgl_mulai_tagihan', '1');
+    $ts   = strtotime($bulan_ym . '-01');
+    if ($ts === false) {
+        return ['ok' => false, 'error' => 'Bulan tidak valid'];
+    }
+    $bln  = (int)date('n', $ts);
+    $thn  = (int)date('Y', $ts);
+    $tsStart = mktime(0, 0, 0, $bln, $tgl_mulai, $thn);
+    $tsEnd   = mktime(0, 0, 0, $bln + 1, $tgl_mulai, $thn); // eksklusif
+    $tsBatas = min($tsEnd, strtotime('tomorrow'));
+
+    $rows = db_rows(
+        "SELECT tanggal, SUM(bytes_out) AS total_bytes FROM usage_pppoe_harian
+         WHERE tanggal >= ? AND tanggal < ?
+         GROUP BY tanggal ORDER BY tanggal ASC",
+        [date('Y-m-d', $tsStart), date('Y-m-d', $tsEnd)]
+    );
+    $map = [];
+    foreach ($rows as $r) $map[$r['tanggal']] = (int)$r['total_bytes'];
+
+    $hariIni = date('Y-m-d');
+    $hari    = [];
+    for ($t = $tsStart; $t < $tsBatas; $t += 86400) {
+        $tgl = date('Y-m-d', $t);
+        $ada = isset($map[$tgl]);
+        $hari[] = [
+            'tanggal'   => $tgl,
+            'bytes_out' => $ada ? $map[$tgl] : null,
+            'hari_ini'  => $tgl === $hariIni,
+        ];
+    }
+
+    $mulaiTercatat = null;
+    foreach ($hari as $h) {
+        if ($h['bytes_out'] !== null) { $mulaiTercatat = $h['tanggal']; break; }
+    }
+
+    return [
+        'ok'             => true,
+        'periode_label'  => label_periode_tagihan($bulan_ym, $tgl_mulai),
+        'mulai_tercatat' => $mulaiTercatat,
+        'hari'           => $hari,
+    ];
+}
+
 // Format durasi detik → string manusiawi (dipakai pesan alert).
 function mon_fmt_durasi(?int $sek): string {
     if ($sek === null || $sek <= 0) return '—';

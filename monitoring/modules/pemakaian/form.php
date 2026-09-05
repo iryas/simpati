@@ -14,6 +14,7 @@ $bulan      = $data['bulan'];
 $bulanList  = $data['bulan_list'];
 $rows       = $data['rows'];
 $areas      = $data['areas'];
+$tren       = mon_pemakaian_harian_total($bulan);
 $totalBytes   = $data['total_bytes'];
 $avgBytes     = $data['avg_bytes'];
 $avgBytesHari = $data['avg_bytes_hari'];
@@ -38,6 +39,29 @@ function pk_fmt_uptime(?int $s): string {
     if ($d > 0) return $d . 'hr ' . ($h % 24) . 'j';
     if ($h > 0) return $h . 'j ' . (int)floor(($s % 3600) / 60) . 'mnt';
     return (int)floor($s / 60) . 'mnt';
+}
+
+// Kelompokkan rentang KOSONG DI AWAL (sebelum data pertama ada) jadi 1 baris
+// "belum tercatat" — pola yang sama kayak modal Detail Pemakaian Harian,
+// biar nggak numpuk banyak baris "—" kalau fitur ini baru mulai jalan.
+function pk_kelompok_tren(array $hari): array {
+    $n = count($hari);
+    $leadEnd = 0;
+    while ($leadEnd < $n && $hari[$leadEnd]['bytes_out'] === null) $leadEnd++;
+
+    $out = [];
+    $i = 0;
+    if ($leadEnd > 1) {
+        $out[] = [
+            'gap'   => true,
+            'label' => tgl_indo($hari[0]['tanggal']) . ' – ' . tgl_indo($hari[$leadEnd - 1]['tanggal']) . ' · belum tercatat',
+        ];
+        $i = $leadEnd;
+    }
+    for (; $i < $n; $i++) {
+        $out[] = ['gap' => false, 'row' => $hari[$i]];
+    }
+    return $out;
 }
 
 $top          = $rows[0] ?? null;
@@ -125,6 +149,12 @@ ob_start();
   .pk-empty{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:60px 24px;text-align:center}
   .pk-empty-icon{width:64px;height:64px;border-radius:18px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;
                  font-size:26px;background:#eff6ff;color:#0ea5e9}
+
+  /* ── Tren Pemakaian Harian ── */
+  .pk-tren-note{padding:11px 18px;background:#eff6ff;color:#0ea5e9;font-size:12px;font-weight:600;border-bottom:1px solid var(--line)}
+  .pk-tren-gap{text-align:center;color:var(--muted);font-style:italic;font-weight:600;background:#fbfcfe}
+  .pk-tren-today td{background:#fffbeb}
+  .pk-tren-today .pk-use-num{color:var(--warn)}
 
   /* ── Kolom Aksi + tombol Detail ── */
   .pk-act{text-align:right}
@@ -240,6 +270,43 @@ ob_start();
   </div>
   <?php endforeach; ?>
 </div>
+
+<!-- Tren Pemakaian Harian (semua pelanggan digabung) -->
+<?php if (!empty($tren['ok']) && !empty($tren['hari'])):
+    $trenRows = pk_kelompok_tren($tren['hari']);
+    $trenAdaGap = $tren['mulai_tercatat'] && $tren['mulai_tercatat'] !== $tren['hari'][0]['tanggal'];
+?>
+<div class="pk-card">
+  <h3><i class="fas fa-chart-area" style="color:var(--muted)"></i> Tren Pemakaian Harian (Semua Pelanggan)
+    <span class="hint"><?= clean($tren['periode_label']) ?></span>
+  </h3>
+  <?php if ($trenAdaGap): ?>
+  <div class="pk-tren-note">
+    <i class="fas fa-info-circle"></i>
+    Data harian mulai tercatat sejak <strong><?= tgl_indo($tren['mulai_tercatat']) ?></strong>.
+  </div>
+  <?php endif; ?>
+  <div class="pk-scroll">
+    <table class="pk-tbl">
+      <thead>
+        <tr><th>Tanggal</th><th>Total Pemakaian</th></tr>
+      </thead>
+      <tbody>
+        <?php foreach ($trenRows as $tr): ?>
+          <?php if ($tr['gap']): ?>
+        <tr><td colspan="2" class="pk-tren-gap"><?= clean($tr['label']) ?></td></tr>
+          <?php else: $h = $tr['row']; ?>
+        <tr<?= $h['hari_ini'] ? ' class="pk-tren-today"' : '' ?>>
+          <td><?= tgl_indo($h['tanggal']) ?><?= $h['hari_ini'] ? ' · Hari ini' : '' ?></td>
+          <td class="pk-use-num"><?= $h['bytes_out'] !== null ? mon_fmt_bytes($h['bytes_out']) : '—' ?></td>
+        </tr>
+          <?php endif; ?>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
 
 <!-- Peringkat Pemakai -->
 <div class="pk-card">
