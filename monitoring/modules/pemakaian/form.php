@@ -22,14 +22,17 @@ $hariBerjalan = $data['hari_berjalan'];
 $count      = $data['count'];
 $page_title = 'Pemakaian Bandwidth';
 
-// Tab aktif di card "Pemakaian per Area" / "Tren Pemakaian Harian".
-$activeTab = ($_GET['tab'] ?? '') === 'tren' ? 'tren' : 'area';
+// Tab aktif di card "Pemakaian per Area" / "Tren Pemakaian Harian" / "Kena FUP".
+$activeTab = in_array($_GET['tab'] ?? '', ['tren', 'fup'], true) ? $_GET['tab'] : 'area';
 
 // Rentang tanggal buat matriks Tren Pemakaian Harian (opsional dari GET,
 // mon_pemakaian_matrix() yang urus default & clamp ke batas periode).
 $trenAwal  = isset($_GET['tren_awal'])  ? preg_replace('/[^0-9\-]/', '', (string)$_GET['tren_awal'])  : '';
 $trenAkhir = isset($_GET['tren_akhir']) ? preg_replace('/[^0-9\-]/', '', (string)$_GET['tren_akhir']) : '';
 $matrix    = mon_pemakaian_matrix($bulan, $trenAwal, $trenAkhir);
+
+// Pelanggan yang lagi kena FUP hari ini.
+$fupList = mon_fup_hari_ini();
 
 // Label bulan Indonesia (Y-m → "Jul 2026").
 function pk_bulan_label(string $ym): string {
@@ -150,6 +153,8 @@ ob_start();
   .pk-tab-btn:hover{color:var(--ink2)}
   .pk-tab-btn.active{color:var(--navy);border-bottom-color:var(--amber)}
   .pk-tab-hint{padding:11px 18px;font-size:11.5px;font-weight:600;color:var(--muted)}
+  .pk-fup-badge{background:var(--red);color:#fff;font-size:11px;font-weight:800;border-radius:999px;
+                padding:1px 7px;line-height:1.5;margin-left:2px}
 
   /* ── Tren Pemakaian Harian: filter tanggal ── */
   .pk-tren-filter{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line)}
@@ -279,6 +284,10 @@ ob_start();
     <button type="button" class="pk-tab-btn <?= $activeTab === 'tren' ? 'active' : '' ?>" data-tab="tren" onclick="pkSwitchTab('tren')">
       <i class="fas fa-table"></i> Tren Pemakaian Harian
     </button>
+    <button type="button" class="pk-tab-btn <?= $activeTab === 'fup' ? 'active' : '' ?>" data-tab="fup" onclick="pkSwitchTab('fup')">
+      <i class="fas fa-tachometer-alt"></i> Kena FUP
+      <?php if (count($fupList) > 0): ?><span class="pk-fup-badge"><?= count($fupList) ?></span><?php endif; ?>
+    </button>
   </div>
 
   <!-- Panel: Pemakaian per Area -->
@@ -372,6 +381,51 @@ ob_start();
               <?php endforeach; ?>
             </tr>
           </tfoot>
+        </table>
+      </div>
+    <?php endif; ?>
+  </div>
+
+  <!-- Panel: Kena FUP -->
+  <div class="pk-tab-panel" data-panel="fup" style="<?= $activeTab === 'fup' ? '' : 'display:none' ?>">
+    <?php if (empty($fupList)): ?>
+      <div class="pk-tren-empty">
+        <i class="fas fa-check-circle" style="font-size:22px;display:block;margin-bottom:8px;color:#22c55e"></i>
+        Nggak ada pelanggan yang kena FUP hari ini.
+      </div>
+    <?php else: ?>
+      <div class="pk-scroll">
+        <table class="pk-tbl">
+          <thead>
+            <tr>
+              <th>Pelanggan</th>
+              <th>Area</th>
+              <th>Paket</th>
+              <th>Pemakaian Hari Ini</th>
+              <th>Kena Sejak</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($fupList as $f): ?>
+            <tr>
+              <td class="pk-name"><?= clean($f['pelanggan']) ?></td>
+              <td class="pk-area-txt"><?= clean($f['area']) ?></td>
+              <td class="pk-area-txt"><?= clean($f['paket']) ?></td>
+              <td class="pk-use-num"><?= mon_fmt_bytes($f['bytes_out']) ?></td>
+              <td class="pk-poll"><?= $f['fup_diterapkan_at'] ? tgl_indo($f['fup_diterapkan_at'], true) : '—' ?></td>
+              <td class="pk-act">
+                <form method="POST" action="fup_cabut.php?bulan=<?= urlencode($bulan) ?>" onsubmit="return confirm('Cabut FUP untuk <?= clean(addslashes($f['pelanggan'])) ?>? Profile normal akan dikirim & ONT-nya di-reboot.');">
+                  <?php csrf_field(); ?>
+                  <input type="hidden" name="pelanggan_id" value="<?= (int)$f['pelanggan_id'] ?>">
+                  <button type="submit" class="df-actbtn">
+                    <i class="fas fa-undo"></i> Cabut FUP
+                  </button>
+                </form>
+              </td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
         </table>
       </div>
     <?php endif; ?>

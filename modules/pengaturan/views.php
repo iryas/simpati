@@ -11,6 +11,8 @@ $nama_isp               = app_setting('nama_isp', 'KahfiNet');
 $no_cs                  = app_setting('no_cs', '');
 $grace_period_isolir    = app_setting('grace_period_isolir', '3');
 $mikrotik_profile_isolir = app_setting('mikrotik_profile_isolir', 'profile-Isolir2');
+$kuota_harian_gb        = app_setting('kuota_harian_gb', '7');
+$mikrotik_profile_fup   = app_setting('mikrotik_profile_fup', 'profile-FUP');
 $wablas_aktif        = app_setting('wablas_aktif', '0');
 $wa_gateway          = app_setting('wa_gateway', 'wablas');
 $wablas_token        = app_setting('wablas_token', '');
@@ -117,6 +119,31 @@ ob_start();
                    value="<?= clean($mikrotik_profile_isolir) ?>" maxlength="100"
                    placeholder="Contoh: profile-Isolir2">
             <small class="text-muted">Nama PPP Profile di Mikrotik yang dipakai saat pelanggan diisolir.</small>
+          </div>
+
+          <hr>
+
+          <div class="form-group">
+            <label class="form-label font-weight-bold">Kuota Harian FUP (Fair Usage Policy)</label>
+            <div class="d-flex align-items-center" style="gap:10px">
+              <input type="number" name="kuota_harian_gb" class="form-control"
+                     value="<?= clean($kuota_harian_gb) ?>" min="0" max="1000" step="0.1" required
+                     style="width:110px">
+              <span class="text-muted" style="font-size:14px;white-space:nowrap">GB / hari / pelanggan</span>
+            </div>
+            <small class="text-muted mt-1 d-block">
+              Pelanggan yang pemakaian hariannya lewat angka ini otomatis di-throttle ke profile FUP
+              sampai tengah malam (reset otomatis, balik ke profile paket masing-masing).
+              Isi <strong>0</strong> buat matiin FUP sepenuhnya.
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label font-weight-bold">Nama Profile FUP (Mikrotik)</label>
+            <input type="text" name="mikrotik_profile_fup" class="form-control"
+                   value="<?= clean($mikrotik_profile_fup) ?>" maxlength="100"
+                   placeholder="Contoh: profile-FUP">
+            <small class="text-muted">Nama PPP Profile di Mikrotik yang dipakai saat pelanggan kena FUP (harus sudah dibuat manual di router).</small>
           </div>
 
           <button type="submit" class="btn btn-primary btn-sm">

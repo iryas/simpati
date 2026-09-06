@@ -53,6 +53,17 @@ $active   = $active ?? '';
     .mrole{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
            background:rgba(245,158,11,.2);color:#fbbf24;padding:2px 7px;border-radius:6px}
     .mmain{max-width:1180px;margin:0 auto;padding:22px}
+    /* Flash message — shell monitoring nggak muat toastr/jQuery, jadi
+       banner sendiri yang ringan, dipakai action kayak Cabut FUP. */
+    .mflash{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-radius:12px;
+            font-size:13.5px;font-weight:600;margin-bottom:16px;box-shadow:var(--shadow)}
+    .mflash button{margin-left:auto;background:none;border:0;font-size:16px;line-height:1;
+                   cursor:pointer;color:inherit;opacity:.6;padding:0}
+    .mflash button:hover{opacity:1}
+    .mflash-success{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+    .mflash-danger{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+    .mflash-warning{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+    .mflash-info{background:#eff6ff;color:#0369a1;border:1px solid #bfdbfe}
     /* Utility jarak ikon→teks (shell monitoring tak memuat Bootstrap). */
     .mr-1{margin-right:7px}
     .mr-2{margin-right:9px}
@@ -100,7 +111,15 @@ $active   = $active ?? '';
   </nav>
   </div>
 
-  <main class="mmain"><?= $content ?? '' ?></main>
+  <main class="mmain">
+    <?php $__flash = get_flash(); if ($__flash): ?>
+      <div class="mflash mflash-<?= clean($__flash['type']) ?>">
+        <span><?= clean($__flash['msg']) ?></span>
+        <button type="button" onclick="this.parentElement.remove()" aria-label="Tutup">&times;</button>
+      </div>
+    <?php endif; ?>
+    <?= $content ?? '' ?>
+  </main>
 
   <script>
     (function(){

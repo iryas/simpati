@@ -5,6 +5,10 @@ system/config.php
 logs/
 *.log
 
+# ── Backup database (jangan pernah ke-commit, berisi data pelanggan) ──
+backup-*.sql
+*.sql
+
 # ── OS & Editor ──────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

@@ -354,6 +354,35 @@ function mon_pemakaian_matrix(string $bulan_ym, string $tglAwal = '', string $tg
     ];
 }
 
+// Daftar pelanggan yang HARI INI lagi kena FUP (fup_diterapkan=1 — yang
+// udah dicabut manual/status 2 nggak ikut ditampilkan lagi di sini, dianggap
+// beres). Dipakai tab "Kena FUP" di modul Pemakaian.
+function mon_fup_hari_ini(): array {
+    $rows = db_rows(
+        "SELECT h.pelanggan_id, h.bytes_out, h.fup_diterapkan_at,
+                p.nama AS pelanggan, a.nama AS area, pk.nama AS paket
+         FROM usage_pppoe_harian h
+         JOIN pelanggan p ON p.id = h.pelanggan_id
+         LEFT JOIN area a ON a.id = p.area_id
+         LEFT JOIN paket pk ON pk.id = p.paket_id
+         WHERE h.tanggal = CURDATE() AND h.fup_diterapkan = 1
+         ORDER BY h.fup_diterapkan_at ASC"
+    );
+
+    $out = [];
+    foreach ($rows as $r) {
+        $out[] = [
+            'pelanggan_id'      => (int)$r['pelanggan_id'],
+            'pelanggan'         => $r['pelanggan'] ?: '—',
+            'area'              => $r['area'] ?: '—',
+            'paket'             => $r['paket'] ?: '—',
+            'bytes_out'         => (int)$r['bytes_out'],
+            'fup_diterapkan_at' => $r['fup_diterapkan_at'],
+        ];
+    }
+    return $out;
+}
+
 // Format durasi detik → string manusiawi (dipakai pesan alert).
 function mon_fmt_durasi(?int $sek): string {
     if ($sek === null || $sek <= 0) return '—';

@@ -35,12 +35,23 @@ switch ($action) {
         $profile_isolir = mb_substr(trim(post('mikrotik_profile_isolir')), 0, 100);
         if ($profile_isolir === '') $profile_isolir = 'profile-Isolir2';
 
+        $kuota_harian = (float)post('kuota_harian_gb');
+        if ($kuota_harian < 0 || $kuota_harian > 1000) {
+            flash('danger', 'Kuota harian FUP tidak valid (0-1000 GB).');
+            redirect($back_url);
+        }
+
+        $profile_fup = mb_substr(trim(post('mikrotik_profile_fup')), 0, 100);
+        if ($profile_fup === '') $profile_fup = 'profile-FUP';
+
         $updates = [
             'tgl_mulai_tagihan'      => (string)$tgl,
             'nama_isp'               => $nama_isp,
             'grace_period_isolir'    => (string)$grace,
             'no_cs'                  => $no_cs,
             'mikrotik_profile_isolir' => $profile_isolir,
+            'kuota_harian_gb'        => (string)$kuota_harian,
+            'mikrotik_profile_fup'   => $profile_fup,
         ];
 
         foreach ($updates as $key => $val) {

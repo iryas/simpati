@@ -10,6 +10,8 @@
 //    php worker.php usage:show   → Lihat rekap pemakaian bulan ini
 //    php worker.php acs:sync     → Sync cache ONU dari GenieACS sekali (untuk cron)
 //    php worker.php acs:work     → Sync terus-menerus (loop, default tiap 1 menit)
+//  (Reset FUP tengah malam nempel otomatis di usage:poll/usage:work — nggak
+//   perlu command/cron terpisah, lihat fup_reset_jika_hari_baru().)
 // ============================================================
 
 if (PHP_SAPI !== 'cli') {
@@ -44,6 +46,8 @@ switch ($cmd) {
 // ── Usage: polling byte-out & uptime dari Mikrotik ───────────
 function usage_poll(): void {
     require_once __DIR__ . '/system/mikrotik.php';
+
+    fup_reset_jika_hari_baru();
 
     wa_log("Polling /ppp/active dari Mikrotik...");
 
@@ -120,7 +124,8 @@ function usage_poll(): void {
                 'last_poll_at'         => date('Y-m-d H:i:s'),
             ], 'pelanggan_id = ? AND bulan_tagihan = ?', [$pelanggan_id, $bulan]);
 
-            usage_catat_harian($pelanggan_id, $bytes_inc, $uptime_inc);
+            $totalHariIni = usage_catat_harian($pelanggan_id, $bytes_inc, $uptime_inc);
+            usage_cek_fup($pelanggan_id, $totalHariIni);
         } else {
             db_insert('usage_pppoe', [
                 'pelanggan_id'         => $pelanggan_id,
@@ -134,7 +139,8 @@ function usage_poll(): void {
 
             // Pertama kali pelanggan ini kepoll bulan ini: seluruh bytes_out/uptime_sec
             // saat ini dianggap increment awal (sama seperti nilai yang di-insert di atas).
-            usage_catat_harian($pelanggan_id, $bytes_out, $uptime_sec);
+            $totalHariIni = usage_catat_harian($pelanggan_id, $bytes_out, $uptime_sec);
+            usage_cek_fup($pelanggan_id, $totalHariIni);
         }
         $updated++;
     }
@@ -143,11 +149,12 @@ function usage_poll(): void {
 }
 
 // Catat increment bytes & uptime dari satu poll ke baris TANGGAL HARI INI
-// di usage_pppoe_harian (dasar buat modal "Detail Pemakaian Harian").
+// di usage_pppoe_harian (dasar buat modal "Detail Pemakaian Harian" & FUP).
 // Delta yang sama dengan yang ditambahkan ke usage_pppoe (per bulan), cuma
 // dikreditkan ke tanggal poll berjalan — bukan didistribusikan mundur kalau
 // pollingnya lewat tengah malam (pendekatan yang sama seperti counter bulanan).
-function usage_catat_harian(int $pelanggan_id, int $bytes_inc, int $uptime_inc): void {
+// Return: total bytes_out TERBARU hari ini (dipakai buat cek kuota FUP).
+function usage_catat_harian(int $pelanggan_id, int $bytes_inc, int $uptime_inc): int {
     $tanggal = date('Y-m-d');
 
     $existing = db_row(
@@ -157,12 +164,14 @@ function usage_catat_harian(int $pelanggan_id, int $bytes_inc, int $uptime_inc):
     );
 
     if ($existing) {
+        $totalBaru = (int)$existing['bytes_out'] + $bytes_inc;
         db_update('usage_pppoe_harian', [
-            'bytes_out'      => (int)$existing['bytes_out'] + $bytes_inc,
+            'bytes_out'      => $totalBaru,
             'uptime_seconds' => (int)$existing['uptime_seconds'] + $uptime_inc,
             'last_poll_at'   => date('Y-m-d H:i:s'),
         ], 'pelanggan_id = ? AND tanggal = ?', [$pelanggan_id, $tanggal]);
     } else {
+        $totalBaru = $bytes_inc;
         db_insert('usage_pppoe_harian', [
             'pelanggan_id'   => $pelanggan_id,
             'tanggal'        => $tanggal,
@@ -171,6 +180,8 @@ function usage_catat_harian(int $pelanggan_id, int $bytes_inc, int $uptime_inc):
             'last_poll_at'   => date('Y-m-d H:i:s'),
         ]);
     }
+
+    return $totalBaru;
 }
 
 // ── Usage: loop terus-menerus (poll tiap N menit) ────────────
