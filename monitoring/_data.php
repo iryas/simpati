@@ -272,8 +272,9 @@ function mon_pemakaian_harian(int $pelanggan_id, string $bulan_ym): array {
 // Matriks pemakaian harian: baris = pelanggan, kolom = tanggal, dalam
 // rentang $tglAwal..$tglAkhir (format Y-m-d, opsional). Dipakai tab
 // "Tren Pemakaian Harian" di modul Pemakaian. Kalau $tglAwal/$tglAkhir
-// kosong, default 7 hari terakhir dari bagian periode $bulan_ym yang
-// sudah berjalan. Selalu di-clamp ke batas periode tagihan.
+// kosong, default cuma hari yang lagi berjalan dari periode $bulan_ym
+// (1 kolom) — admin perlebar sendiri lewat filter kalau mau lihat tren
+// beberapa hari. Selalu di-clamp ke batas periode tagihan.
 function mon_pemakaian_matrix(string $bulan_ym, string $tglAwal = '', string $tglAkhir = ''): array {
     $tgl_mulai = (int)app_setting('tgl_mulai_tagihan', '1');
     $ts = strtotime($bulan_ym . '-01');
@@ -288,10 +289,12 @@ function mon_pemakaian_matrix(string $bulan_ym, string $tglAwal = '', string $tg
     if ($tsHariTerakhir < $tsPeriodeAwal) $tsHariTerakhir = $tsPeriodeAwal; // periode belum mulai (jarang)
 
     // Resolve tanggal awal/akhir yang diminta, default & clamp ke batas periode.
+    // Default: cuma hari yang lagi berjalan (1 kolom) — admin perlebar sendiri
+    // lewat filter "Sampai" kalau mau lihat tren beberapa hari.
     $tsAkhir = $tglAkhir !== '' ? strtotime($tglAkhir) : false;
     if ($tsAkhir === false) $tsAkhir = $tsHariTerakhir;
     $tsAwal = $tglAwal !== '' ? strtotime($tglAwal) : false;
-    if ($tsAwal === false) $tsAwal = max($tsPeriodeAwal, $tsAkhir - 6 * 86400);
+    if ($tsAwal === false) $tsAwal = $tsAkhir;
 
     $tsAwal  = max($tsPeriodeAwal, min($tsAwal, $tsHariTerakhir));
     $tsAkhir = max($tsPeriodeAwal, min($tsAkhir, $tsHariTerakhir));
