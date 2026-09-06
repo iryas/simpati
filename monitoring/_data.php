@@ -269,53 +269,88 @@ function mon_pemakaian_harian(int $pelanggan_id, string $bulan_ym): array {
     ];
 }
 
-// Total pemakaian SEMUA PELANGGAN digabung, per tanggal, dalam periode
-// tagihan $bulan_ym. Dipakai kartu "Tren Pemakaian Harian" di modul
-// Pemakaian. Sama kaidahnya kayak mon_pemakaian_harian(): tanggal yang
-// belum ada baris usage_pppoe_harian ditandai null, tidak diestimasi.
-function mon_pemakaian_harian_total(string $bulan_ym): array {
+// Matriks pemakaian harian: baris = pelanggan, kolom = tanggal, dalam
+// rentang $tglAwal..$tglAkhir (format Y-m-d, opsional). Dipakai tab
+// "Tren Pemakaian Harian" di modul Pemakaian. Kalau $tglAwal/$tglAkhir
+// kosong, default 7 hari terakhir dari bagian periode $bulan_ym yang
+// sudah berjalan. Selalu di-clamp ke batas periode tagihan.
+function mon_pemakaian_matrix(string $bulan_ym, string $tglAwal = '', string $tglAkhir = ''): array {
     $tgl_mulai = (int)app_setting('tgl_mulai_tagihan', '1');
-    $ts   = strtotime($bulan_ym . '-01');
+    $ts = strtotime($bulan_ym . '-01');
     if ($ts === false) {
         return ['ok' => false, 'error' => 'Bulan tidak valid'];
     }
-    $bln  = (int)date('n', $ts);
-    $thn  = (int)date('Y', $ts);
-    $tsStart = mktime(0, 0, 0, $bln, $tgl_mulai, $thn);
-    $tsEnd   = mktime(0, 0, 0, $bln + 1, $tgl_mulai, $thn); // eksklusif
-    $tsBatas = min($tsEnd, strtotime('tomorrow'));
+    $bln = (int)date('n', $ts);
+    $thn = (int)date('Y', $ts);
+    $tsPeriodeAwal      = mktime(0, 0, 0, $bln, $tgl_mulai, $thn);
+    $tsPeriodeAkhirExcl = mktime(0, 0, 0, $bln + 1, $tgl_mulai, $thn); // eksklusif
+    $tsHariTerakhir     = min($tsPeriodeAkhirExcl - 86400, strtotime('today'));
+    if ($tsHariTerakhir < $tsPeriodeAwal) $tsHariTerakhir = $tsPeriodeAwal; // periode belum mulai (jarang)
+
+    // Resolve tanggal awal/akhir yang diminta, default & clamp ke batas periode.
+    $tsAkhir = $tglAkhir !== '' ? strtotime($tglAkhir) : false;
+    if ($tsAkhir === false) $tsAkhir = $tsHariTerakhir;
+    $tsAwal = $tglAwal !== '' ? strtotime($tglAwal) : false;
+    if ($tsAwal === false) $tsAwal = max($tsPeriodeAwal, $tsAkhir - 6 * 86400);
+
+    $tsAwal  = max($tsPeriodeAwal, min($tsAwal, $tsHariTerakhir));
+    $tsAkhir = max($tsPeriodeAwal, min($tsAkhir, $tsHariTerakhir));
+    if ($tsAwal > $tsAkhir) [$tsAwal, $tsAkhir] = [$tsAkhir, $tsAwal];
+
+    $tanggalList = [];
+    for ($t = $tsAwal; $t <= $tsAkhir; $t += 86400) $tanggalList[] = date('Y-m-d', $t);
 
     $rows = db_rows(
-        "SELECT tanggal, SUM(bytes_out) AS total_bytes FROM usage_pppoe_harian
-         WHERE tanggal >= ? AND tanggal < ?
-         GROUP BY tanggal ORDER BY tanggal ASC",
-        [date('Y-m-d', $tsStart), date('Y-m-d', $tsEnd)]
+        "SELECT h.pelanggan_id, h.tanggal, h.bytes_out, h.uptime_seconds,
+                p.nama AS pelanggan, a.nama AS area, pk.nama AS paket
+         FROM usage_pppoe_harian h
+         JOIN pelanggan p ON p.id = h.pelanggan_id
+         LEFT JOIN area a  ON a.id = p.area_id
+         LEFT JOIN paket pk ON pk.id = p.paket_id
+         WHERE h.tanggal >= ? AND h.tanggal <= ?",
+        [date('Y-m-d', $tsAwal), date('Y-m-d', $tsAkhir)]
     );
-    $map = [];
-    foreach ($rows as $r) $map[$r['tanggal']] = (int)$r['total_bytes'];
 
-    $hariIni = date('Y-m-d');
-    $hari    = [];
-    for ($t = $tsStart; $t < $tsBatas; $t += 86400) {
-        $tgl = date('Y-m-d', $t);
-        $ada = isset($map[$tgl]);
-        $hari[] = [
-            'tanggal'   => $tgl,
-            'bytes_out' => $ada ? $map[$tgl] : null,
-            'hari_ini'  => $tgl === $hariIni,
+    $pelangganMap = [];
+    foreach ($rows as $r) {
+        $pid = (int)$r['pelanggan_id'];
+        if (!isset($pelangganMap[$pid])) {
+            $pelangganMap[$pid] = [
+                'pelanggan' => $r['pelanggan'] ?: '—',
+                'area'      => $r['area'] ?: '—',
+                'paket'     => $r['paket'] ?: '—',
+                'hari'      => [],
+                'total'     => 0,
+            ];
+        }
+        $bytes = (int)$r['bytes_out'];
+        $pelangganMap[$pid]['hari'][$r['tanggal']] = [
+            'bytes_out'      => $bytes,
+            'uptime_seconds' => (int)$r['uptime_seconds'],
         ];
+        $pelangganMap[$pid]['total'] += $bytes;
     }
 
-    $mulaiTercatat = null;
-    foreach ($hari as $h) {
-        if ($h['bytes_out'] !== null) { $mulaiTercatat = $h['tanggal']; break; }
+    // Cuma tampilkan pelanggan yang beneran ada pemakaian di rentang ini.
+    $pelangganMap = array_filter($pelangganMap, fn($p) => $p['total'] > 0);
+    uasort($pelangganMap, fn($a, $b) => $b['total'] <=> $a['total']);
+
+    $totalPerTanggal = array_fill_keys($tanggalList, 0);
+    foreach ($pelangganMap as $p) {
+        foreach ($tanggalList as $tgl) {
+            if (isset($p['hari'][$tgl])) $totalPerTanggal[$tgl] += $p['hari'][$tgl]['bytes_out'];
+        }
     }
 
     return [
-        'ok'             => true,
-        'periode_label'  => label_periode_tagihan($bulan_ym, $tgl_mulai),
-        'mulai_tercatat' => $mulaiTercatat,
-        'hari'           => $hari,
+        'ok'                => true,
+        'tanggal_list'      => $tanggalList,
+        'tgl_awal'          => date('Y-m-d', $tsAwal),
+        'tgl_akhir'         => date('Y-m-d', $tsAkhir),
+        'periode_awal'      => date('Y-m-d', $tsPeriodeAwal),
+        'periode_akhir'     => date('Y-m-d', $tsHariTerakhir),
+        'pelanggan'         => array_values($pelangganMap),
+        'total_per_tanggal' => $totalPerTanggal,
     ];
 }
 

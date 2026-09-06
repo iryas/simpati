@@ -14,7 +14,6 @@ $bulan      = $data['bulan'];
 $bulanList  = $data['bulan_list'];
 $rows       = $data['rows'];
 $areas      = $data['areas'];
-$tren       = mon_pemakaian_harian_total($bulan);
 $totalBytes   = $data['total_bytes'];
 $avgBytes     = $data['avg_bytes'];
 $avgBytesHari = $data['avg_bytes_hari'];
@@ -22,6 +21,15 @@ $hariTotal    = $data['hari_total'];
 $hariBerjalan = $data['hari_berjalan'];
 $count      = $data['count'];
 $page_title = 'Pemakaian Bandwidth';
+
+// Tab aktif di card "Pemakaian per Area" / "Tren Pemakaian Harian".
+$activeTab = ($_GET['tab'] ?? '') === 'tren' ? 'tren' : 'area';
+
+// Rentang tanggal buat matriks Tren Pemakaian Harian (opsional dari GET,
+// mon_pemakaian_matrix() yang urus default & clamp ke batas periode).
+$trenAwal  = isset($_GET['tren_awal'])  ? preg_replace('/[^0-9\-]/', '', (string)$_GET['tren_awal'])  : '';
+$trenAkhir = isset($_GET['tren_akhir']) ? preg_replace('/[^0-9\-]/', '', (string)$_GET['tren_akhir']) : '';
+$matrix    = mon_pemakaian_matrix($bulan, $trenAwal, $trenAkhir);
 
 // Label bulan Indonesia (Y-m → "Jul 2026").
 function pk_bulan_label(string $ym): string {
@@ -41,27 +49,11 @@ function pk_fmt_uptime(?int $s): string {
     return (int)floor($s / 60) . 'mnt';
 }
 
-// Kelompokkan rentang KOSONG DI AWAL (sebelum data pertama ada) jadi 1 baris
-// "belum tercatat" — pola yang sama kayak modal Detail Pemakaian Harian,
-// biar nggak numpuk banyak baris "—" kalau fitur ini baru mulai jalan.
-function pk_kelompok_tren(array $hari): array {
-    $n = count($hari);
-    $leadEnd = 0;
-    while ($leadEnd < $n && $hari[$leadEnd]['bytes_out'] === null) $leadEnd++;
-
-    $out = [];
-    $i = 0;
-    if ($leadEnd > 1) {
-        $out[] = [
-            'gap'   => true,
-            'label' => tgl_indo($hari[0]['tanggal']) . ' – ' . tgl_indo($hari[$leadEnd - 1]['tanggal']) . ' · belum tercatat',
-        ];
-        $i = $leadEnd;
-    }
-    for (; $i < $n; $i++) {
-        $out[] = ['gap' => false, 'row' => $hari[$i]];
-    }
-    return $out;
+// Tanggal pendek buat header kolom matriks ("26 Agt", tanpa tahun).
+function pk_tgl_pendek(string $ymd): string {
+    $b  = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+    $ts = strtotime($ymd);
+    return date('d', $ts) . ' ' . $b[(int)date('n', $ts)];
 }
 
 $top          = $rows[0] ?? null;
@@ -150,11 +142,35 @@ ob_start();
   .pk-empty-icon{width:64px;height:64px;border-radius:18px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;
                  font-size:26px;background:#eff6ff;color:#0ea5e9}
 
-  /* ── Tren Pemakaian Harian ── */
-  .pk-tren-note{padding:11px 18px;background:#eff6ff;color:#0ea5e9;font-size:12px;font-weight:600;border-bottom:1px solid var(--line)}
-  .pk-tren-gap{text-align:center;color:var(--muted);font-style:italic;font-weight:600;background:#fbfcfe}
-  .pk-tren-today td{background:#fffbeb}
-  .pk-tren-today .pk-use-num{color:var(--warn)}
+  /* ── Tab: Pemakaian per Area / Tren Pemakaian Harian ── */
+  .pk-tabs{display:flex;border-bottom:1px solid var(--line);padding:0 8px}
+  .pk-tab-btn{display:inline-flex;align-items:center;gap:7px;padding:14px;font-size:13.5px;font-weight:700;
+              color:var(--muted);background:none;border:none;border-bottom:2px solid transparent;
+              cursor:pointer;font-family:inherit;white-space:nowrap}
+  .pk-tab-btn:hover{color:var(--ink2)}
+  .pk-tab-btn.active{color:var(--navy);border-bottom-color:var(--amber)}
+  .pk-tab-hint{padding:11px 18px;font-size:11.5px;font-weight:600;color:var(--muted)}
+
+  /* ── Tren Pemakaian Harian: filter tanggal ── */
+  .pk-tren-filter{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line)}
+  .pk-tren-filter label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px}
+  .pk-tren-filter input[type="date"]{padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px;
+                                      font-family:inherit;color:var(--ink);background:#f8fafc}
+  .pk-tren-filter input[type="date"]:focus{outline:none;border-color:var(--amber)}
+  .pk-tren-filter-btn{padding:9px 16px;border:1px solid var(--navy);border-radius:9px;font-size:13px;font-weight:700;
+                       font-family:inherit;color:#fff;background:var(--navy);cursor:pointer}
+  .pk-tren-filter-btn:hover{background:#173257}
+  .pk-tren-empty{padding:40px 24px;text-align:center;color:var(--muted);font-size:13.5px}
+
+  /* ── Tren Pemakaian Harian: matriks ── */
+  table.pk-matrix th.pk-matrix-date{text-align:right}
+  table.pk-matrix th.pk-matrix-today,table.pk-matrix td.pk-matrix-today{background:#fffbeb}
+  .pk-matrix-cell{text-align:right;min-width:82px}
+  .pk-matrix-bytes{font-weight:800;font-variant-numeric:tabular-nums;color:var(--navy);font-size:13px}
+  .pk-matrix-bytes.pk-matrix-empty{font-weight:600;color:var(--muted)}
+  .pk-matrix-dur{font-size:11px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:2px}
+  tr.pk-matrix-total td{background:#fbfcfe;font-weight:800;color:var(--navy);border-top:2px solid var(--line)}
+  tr.pk-matrix-total .pk-matrix-bytes{color:var(--navy)}
 
   /* ── Kolom Aksi + tombol Detail ── */
   .pk-act{text-align:right}
@@ -206,7 +222,7 @@ ob_start();
   <b id="pkSyncTs"><?= $lastPoll ? tgl_indo($lastPoll, true) : '—' ?></b>
   <span id="pkUpdated"></span>
   <?php if (!empty($bulanList)): ?>
-  <select class="pk-month" onchange="location.href='form.php?bulan=' + encodeURIComponent(this.value)">
+  <select class="pk-month" onchange="location.href='form.php?bulan=' + encodeURIComponent(this.value) + '&tab=<?= $activeTab ?>'">
     <?php foreach ($bulanList as $bl): ?>
       <option value="<?= clean($bl) ?>" <?= $bl === $bulan ? 'selected' : '' ?>><?= pk_bulan_label($bl) ?></option>
     <?php endforeach; ?>
@@ -254,59 +270,113 @@ ob_start();
   </div>
 </div>
 
-<!-- Breakdown per Area -->
+<!-- Pemakaian per Area / Tren Pemakaian Harian (tab) -->
 <div class="pk-card">
-  <h3><i class="fas fa-map-marked-alt" style="color:var(--muted)"></i> Pemakaian per Area <span class="hint"><?= count($areas) ?> area</span></h3>
-  <?php foreach ($areas as $a):
-      $pct = $maxAreaBytes > 0 ? round($a['bytes'] / $maxAreaBytes * 100) : 0;
-  ?>
-  <div class="pk-area">
-    <div class="pk-area-top">
-      <span class="pk-area-name"><?= clean($a['area']) ?></span>
-      <span class="pk-area-cnt"><i class="fas fa-user" style="font-size:9px"></i> <?= $a['count'] ?> plgn</span>
-      <span class="pk-area-val"><?= mon_fmt_bytes($a['bytes']) ?></span>
-    </div>
-    <div class="pk-bar-bg"><div class="pk-bar" style="width:<?= $pct ?>%"></div></div>
+  <div class="pk-tabs">
+    <button type="button" class="pk-tab-btn <?= $activeTab === 'area' ? 'active' : '' ?>" data-tab="area" onclick="pkSwitchTab('area')">
+      <i class="fas fa-map-marked-alt"></i> Pemakaian per Area
+    </button>
+    <button type="button" class="pk-tab-btn <?= $activeTab === 'tren' ? 'active' : '' ?>" data-tab="tren" onclick="pkSwitchTab('tren')">
+      <i class="fas fa-table"></i> Tren Pemakaian Harian
+    </button>
   </div>
-  <?php endforeach; ?>
-</div>
 
-<!-- Tren Pemakaian Harian (semua pelanggan digabung) -->
-<?php if (!empty($tren['ok']) && !empty($tren['hari'])):
-    $trenRows = pk_kelompok_tren($tren['hari']);
-    $trenAdaGap = $tren['mulai_tercatat'] && $tren['mulai_tercatat'] !== $tren['hari'][0]['tanggal'];
-?>
-<div class="pk-card">
-  <h3><i class="fas fa-chart-area" style="color:var(--muted)"></i> Tren Pemakaian Harian (Semua Pelanggan)
-    <span class="hint"><?= clean($tren['periode_label']) ?></span>
-  </h3>
-  <?php if ($trenAdaGap): ?>
-  <div class="pk-tren-note">
-    <i class="fas fa-info-circle"></i>
-    Data harian mulai tercatat sejak <strong><?= tgl_indo($tren['mulai_tercatat']) ?></strong>.
+  <!-- Panel: Pemakaian per Area -->
+  <div class="pk-tab-panel" data-panel="area" style="<?= $activeTab === 'area' ? '' : 'display:none' ?>">
+    <div class="pk-tab-hint"><?= count($areas) ?> area</div>
+    <?php foreach ($areas as $a):
+        $pct = $maxAreaBytes > 0 ? round($a['bytes'] / $maxAreaBytes * 100) : 0;
+    ?>
+    <div class="pk-area">
+      <div class="pk-area-top">
+        <span class="pk-area-name"><?= clean($a['area']) ?></span>
+        <span class="pk-area-cnt"><i class="fas fa-user" style="font-size:9px"></i> <?= $a['count'] ?> plgn</span>
+        <span class="pk-area-val"><?= mon_fmt_bytes($a['bytes']) ?></span>
+      </div>
+      <div class="pk-bar-bg"><div class="pk-bar" style="width:<?= $pct ?>%"></div></div>
+    </div>
+    <?php endforeach; ?>
   </div>
-  <?php endif; ?>
-  <div class="pk-scroll">
-    <table class="pk-tbl">
-      <thead>
-        <tr><th>Tanggal</th><th>Total Pemakaian</th></tr>
-      </thead>
-      <tbody>
-        <?php foreach ($trenRows as $tr): ?>
-          <?php if ($tr['gap']): ?>
-        <tr><td colspan="2" class="pk-tren-gap"><?= clean($tr['label']) ?></td></tr>
-          <?php else: $h = $tr['row']; ?>
-        <tr<?= $h['hari_ini'] ? ' class="pk-tren-today"' : '' ?>>
-          <td><?= tgl_indo($h['tanggal']) ?><?= $h['hari_ini'] ? ' · Hari ini' : '' ?></td>
-          <td class="pk-use-num"><?= $h['bytes_out'] !== null ? mon_fmt_bytes($h['bytes_out']) : '—' ?></td>
-        </tr>
-          <?php endif; ?>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
+
+  <!-- Panel: Tren Pemakaian Harian (matriks pelanggan x tanggal) -->
+  <div class="pk-tab-panel" data-panel="tren" style="<?= $activeTab === 'tren' ? '' : 'display:none' ?>">
+    <form method="GET" action="form.php" class="pk-tren-filter">
+      <input type="hidden" name="bulan" value="<?= clean($bulan) ?>">
+      <input type="hidden" name="tab" value="tren">
+      <div>
+        <label for="trenAwal">Dari</label>
+        <input type="date" id="trenAwal" name="tren_awal"
+               value="<?= clean($matrix['tgl_awal'] ?? '') ?>"
+               min="<?= clean($matrix['periode_awal'] ?? '') ?>" max="<?= clean($matrix['periode_akhir'] ?? '') ?>">
+      </div>
+      <div>
+        <label for="trenAkhir">Sampai</label>
+        <input type="date" id="trenAkhir" name="tren_akhir"
+               value="<?= clean($matrix['tgl_akhir'] ?? '') ?>"
+               min="<?= clean($matrix['periode_awal'] ?? '') ?>" max="<?= clean($matrix['periode_akhir'] ?? '') ?>">
+      </div>
+      <button type="submit" class="pk-tren-filter-btn">Tampilkan</button>
+    </form>
+
+    <?php if (empty($matrix['ok']) || empty($matrix['pelanggan'])): ?>
+      <div class="pk-tren-empty">
+        <i class="fas fa-inbox" style="font-size:22px;display:block;margin-bottom:8px"></i>
+        Belum ada data pemakaian harian buat rentang tanggal ini.
+      </div>
+    <?php else:
+        $hariIni = date('Y-m-d');
+    ?>
+      <div class="pk-scroll">
+        <table class="pk-tbl pk-matrix">
+          <thead>
+            <tr>
+              <th>Pelanggan</th>
+              <th>Area</th>
+              <th>Paket</th>
+              <?php foreach ($matrix['tanggal_list'] as $tgl): ?>
+                <th class="pk-matrix-date <?= $tgl === $hariIni ? 'pk-matrix-today' : '' ?>"><?= pk_tgl_pendek($tgl) ?></th>
+              <?php endforeach; ?>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($matrix['pelanggan'] as $p): ?>
+            <tr>
+              <td class="pk-name"><?= clean($p['pelanggan']) ?></td>
+              <td class="pk-area-txt"><?= clean($p['area']) ?></td>
+              <td class="pk-area-txt"><?= clean($p['paket']) ?></td>
+              <?php foreach ($matrix['tanggal_list'] as $tgl):
+                  $cell = $p['hari'][$tgl] ?? null;
+                  $tdCls = $tgl === $hariIni ? 'pk-matrix-cell pk-matrix-today' : 'pk-matrix-cell';
+              ?>
+                <td class="<?= $tdCls ?>">
+                  <?php if ($cell): ?>
+                    <div class="pk-matrix-bytes"><?= mon_fmt_bytes($cell['bytes_out']) ?></div>
+                    <div class="pk-matrix-dur"><?= mon_fmt_durasi($cell['uptime_seconds']) ?></div>
+                  <?php else: ?>
+                    <div class="pk-matrix-bytes pk-matrix-empty">—</div>
+                  <?php endif; ?>
+                </td>
+              <?php endforeach; ?>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+          <tfoot>
+            <tr class="pk-matrix-total">
+              <td colspan="3">Total</td>
+              <?php foreach ($matrix['tanggal_list'] as $tgl):
+                  $tdCls = $tgl === $hariIni ? 'pk-matrix-cell pk-matrix-today' : 'pk-matrix-cell';
+              ?>
+                <td class="<?= $tdCls ?>">
+                  <div class="pk-matrix-bytes"><?= mon_fmt_bytes($matrix['total_per_tanggal'][$tgl]) ?></div>
+                </td>
+              <?php endforeach; ?>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    <?php endif; ?>
   </div>
 </div>
-<?php endif; ?>
 
 <!-- Peringkat Pemakai -->
 <div class="pk-card">
@@ -432,6 +502,16 @@ $body_extra = <<<'HTML'
     if (areaSel) areaSel.addEventListener('change', applyFilter);
   }
 })();
+
+// ── Tab: Pemakaian per Area / Tren Pemakaian Harian ──
+function pkSwitchTab(tab){
+  document.querySelectorAll('.pk-tab-btn').forEach(function(btn){
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  document.querySelectorAll('.pk-tab-panel').forEach(function(panel){
+    panel.style.display = panel.dataset.panel === tab ? '' : 'none';
+  });
+}
 
 // ── Modal Detail Pemakaian Harian ──
 function pdRenderRows(hari){
