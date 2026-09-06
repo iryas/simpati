@@ -11,6 +11,17 @@ function fup_log(string $msg): void {
     @file_put_contents(__DIR__ . '/../logs/fup.log', $line, FILE_APPEND);
 }
 
+// Baca setting FUP LANGSUNG dari DB, bukan lewat app_setting() yang di-cache
+// per-proses. Ini sengaja — usage:work jalan sebagai 1 proses PHP yang loop
+// terus-menerus (bisa berhari-hari), dan kalau pakai cache, toggle FUP di
+// halaman Pengaturan nggak akan kepakai sampai prosesnya di-restart manual.
+// Krusial buat kasus darurat (admin butuh matiin FUP instan tanpa restart
+// worker di server).
+function fup_setting(string $key, string $default = ''): string {
+    $row = db_row("SELECT setting_val FROM app_settings WHERE setting_key = ?", [$key]);
+    return $row ? (string)$row['setting_val'] : $default;
+}
+
 // ── FUP: throttle pelanggan yang lewat kuota harian ──────────
 // Dicek tiap siklus usage:poll, langsung setelah usage_catat_harian().
 // Kalau total pemakaian hari ini > kuota_harian_gb: push profile Mikrotik
@@ -19,8 +30,10 @@ function fup_log(string $msg): void {
 // profile baru sampai reconnect, dan ONT sering bengong kalau cuma
 // diputus sesi tanpa reboot fisik).
 function usage_cek_fup(int $pelanggan_id, int $totalBytesHariIni): void {
-    $kuotaGb = (float)app_setting('kuota_harian_gb', '7');
-    if ($kuotaGb <= 0) return; // FUP nonaktif kalau kuota di-set 0/kosong
+    if (fup_setting('fup_aktif', '0') !== '1') return; // FUP dimatiin dari Pengaturan
+
+    $kuotaGb = (float)fup_setting('kuota_harian_gb', '7');
+    if ($kuotaGb <= 0) return; // jaga-jaga tambahan kalau kuota di-set 0/kosong
 
     $kuotaBytes = $kuotaGb * 1024 * 1024 * 1024;
     if ($totalBytesHariIni <= $kuotaBytes) return; // belum lewat kuota
@@ -52,7 +65,7 @@ function usage_cek_fup(int $pelanggan_id, int $totalBytesHariIni): void {
         return;
     }
 
-    $profilFup = app_setting('mikrotik_profile_fup', 'profile-FUP');
+    $profilFup = fup_setting('mikrotik_profile_fup', 'profile-FUP');
     $ok = mikrotik_secret_push_profile($pelanggan['ros_id'], $profilFup, false, $pelanggan['secret_name'] ?? '');
 
     if (!$ok) {

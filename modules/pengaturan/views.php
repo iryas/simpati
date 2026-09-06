@@ -6,13 +6,14 @@ require_once __DIR__ . '/../../system/init.php';
 auth_check();
 auth_role([ROLE_ADMIN]);
 
-$tgl_mulai              = app_setting('tgl_mulai_tagihan', '1');
-$nama_isp               = app_setting('nama_isp', 'KahfiNet');
-$no_cs                  = app_setting('no_cs', '');
-$grace_period_isolir    = app_setting('grace_period_isolir', '3');
+$tgl_mulai               = app_setting('tgl_mulai_tagihan', '1');
+$nama_isp                = app_setting('nama_isp', 'KahfiNet');
+$no_cs                   = app_setting('no_cs', '');
+$grace_period_isolir     = app_setting('grace_period_isolir', '3');
 $mikrotik_profile_isolir = app_setting('mikrotik_profile_isolir', 'profile-Isolir2');
-$kuota_harian_gb        = app_setting('kuota_harian_gb', '7');
-$mikrotik_profile_fup   = app_setting('mikrotik_profile_fup', 'profile-FUP');
+$fup_aktif               = app_setting('fup_aktif', '0');
+$kuota_harian_gb         = app_setting('kuota_harian_gb', '7');
+$mikrotik_profile_fup    = app_setting('mikrotik_profile_fup', 'profile-FUP');
 $wablas_aktif        = app_setting('wablas_aktif', '0');
 $wa_gateway          = app_setting('wa_gateway', 'wablas');
 $wablas_token        = app_setting('wablas_token', '');
@@ -21,6 +22,10 @@ $fonnte_token        = app_setting('fonnte_token', '');
 $telegram_aktif      = app_setting('telegram_aktif', '0');
 $telegram_bot_token  = app_setting('telegram_bot_token', '');
 $telegram_chat_id    = app_setting('telegram_chat_id', '');
+
+// Tab aktif — dipertahankan lewat redirect abis simpan (act.php nambahin
+// ?tab=... ke back_url), biar nggak balik ke tab pertama abis nyimpen.
+$activeTab = in_array($_GET['tab'] ?? '', ['fup', 'wa', 'telegram'], true) ? $_GET['tab'] : 'umum';
 
 $page_title  = 'Pengaturan Aplikasi';
 $active_menu = 'pengaturan';
@@ -32,13 +37,41 @@ ob_start();
   <h5><i class="fas fa-cog mr-2 text-primary"></i>Pengaturan Aplikasi</h5>
 </div>
 
-<div class="row">
-  <div class="col-lg-6">
-    <div class="card">
-      <div class="card-header">
-        <span><i class="fas fa-sliders-h mr-2 text-primary"></i>Pengaturan Umum</span>
-      </div>
-      <div class="card-body">
+<div class="card">
+  <div class="card-header p-0">
+    <ul class="nav nav-tabs card-header-tabs" id="pengaturanTab" role="tablist">
+      <li class="nav-item">
+        <a class="nav-link <?= $activeTab === 'umum' ? 'active' : '' ?>" id="tab-umum" data-toggle="tab"
+           href="#pane-umum" role="tab" aria-controls="pane-umum" aria-selected="<?= $activeTab === 'umum' ? 'true' : 'false' ?>">
+          <i class="fas fa-sliders-h mr-1"></i>Umum
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <?= $activeTab === 'fup' ? 'active' : '' ?>" id="tab-fup" data-toggle="tab"
+           href="#pane-fup" role="tab" aria-controls="pane-fup" aria-selected="<?= $activeTab === 'fup' ? 'true' : 'false' ?>">
+          <i class="fas fa-tachometer-alt mr-1"></i>FUP
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <?= $activeTab === 'wa' ? 'active' : '' ?>" id="tab-wa" data-toggle="tab"
+           href="#pane-wa" role="tab" aria-controls="pane-wa" aria-selected="<?= $activeTab === 'wa' ? 'true' : 'false' ?>">
+          <i class="fab fa-whatsapp mr-1 text-success"></i>WhatsApp Gateway
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <?= $activeTab === 'telegram' ? 'active' : '' ?>" id="tab-telegram" data-toggle="tab"
+           href="#pane-telegram" role="tab" aria-controls="pane-telegram" aria-selected="<?= $activeTab === 'telegram' ? 'true' : 'false' ?>">
+          <i class="fab fa-telegram mr-1" style="color:#229ED9"></i>Notifikasi Telegram
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card-body">
+    <div class="tab-content" id="pengaturanTabContent">
+
+      <!-- ============ TAB: UMUM ============ -->
+      <div class="tab-pane fade <?= $activeTab === 'umum' ? 'show active' : '' ?>" id="pane-umum" role="tabpanel" aria-labelledby="tab-umum">
         <form method="POST" action="<?= BASE_URL ?>modules/pengaturan/act.php">
           <?php csrf_field(); ?>
           <input type="hidden" name="action" value="save">
@@ -121,10 +154,33 @@ ob_start();
             <small class="text-muted">Nama PPP Profile di Mikrotik yang dipakai saat pelanggan diisolir.</small>
           </div>
 
-          <hr>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-save mr-1"></i>Simpan Pengaturan
+          </button>
+        </form>
+      </div>
+
+      <!-- ============ TAB: FUP ============ -->
+      <div class="tab-pane fade <?= $activeTab === 'fup' ? 'show active' : '' ?>" id="pane-fup" role="tabpanel" aria-labelledby="tab-fup">
+        <form method="POST" action="<?= BASE_URL ?>modules/pengaturan/act.php">
+          <?php csrf_field(); ?>
+          <input type="hidden" name="action" value="save_fup">
 
           <div class="form-group">
-            <label class="form-label font-weight-bold">Kuota Harian FUP (Fair Usage Policy)</label>
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="fup_aktif"
+                     name="fup_aktif" value="1" <?= $fup_aktif === '1' ? 'checked' : '' ?>>
+              <label class="custom-control-label font-weight-bold" for="fup_aktif">
+                Aktifkan FUP (Fair Usage Policy)
+              </label>
+            </div>
+            <small class="text-muted">
+              <?= $fup_aktif === '1' ? 'FUP <strong>aktif</strong> — pelanggan lewat kuota otomatis di-throttle.' : 'FUP saat ini <strong>nonaktif</strong> — nggak ada pelanggan yang di-throttle otomatis walau lewat kuota.' ?>
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label font-weight-bold">Kuota Harian FUP</label>
             <div class="d-flex align-items-center" style="gap:10px">
               <input type="number" name="kuota_harian_gb" class="form-control"
                      value="<?= clean($kuota_harian_gb) ?>" min="0" max="1000" step="0.1" required
@@ -134,7 +190,7 @@ ob_start();
             <small class="text-muted mt-1 d-block">
               Pelanggan yang pemakaian hariannya lewat angka ini otomatis di-throttle ke profile FUP
               sampai tengah malam (reset otomatis, balik ke profile paket masing-masing).
-              Isi <strong>0</strong> buat matiin FUP sepenuhnya.
+              Cuma berlaku kalau toggle di atas aktif.
             </small>
           </div>
 
@@ -151,18 +207,9 @@ ob_start();
           </button>
         </form>
       </div>
-    </div>
-  </div>
-</div>
 
-<!-- WhatsApp Gateway -->
-<div class="row mt-4">
-  <div class="col-lg-7">
-    <div class="card">
-      <div class="card-header">
-        <span><i class="fab fa-whatsapp mr-2 text-success"></i>WhatsApp Gateway</span>
-      </div>
-      <div class="card-body">
+      <!-- ============ TAB: WHATSAPP GATEWAY ============ -->
+      <div class="tab-pane fade <?= $activeTab === 'wa' ? 'show active' : '' ?>" id="pane-wa" role="tabpanel" aria-labelledby="tab-wa">
         <form method="POST" action="<?= BASE_URL ?>modules/pengaturan/act.php">
           <?php csrf_field(); ?>
           <input type="hidden" name="action" value="save_wa">
@@ -280,18 +327,9 @@ ob_start();
           </button>
         </form>
       </div>
-    </div>
-  </div>
-</div>
 
-<!-- Notifikasi Telegram (internal admin/teknisi) -->
-<div class="row mt-4">
-  <div class="col-lg-6">
-    <div class="card">
-      <div class="card-header">
-        <span><i class="fab fa-telegram mr-2" style="color:#229ED9"></i>Notifikasi Telegram (Admin/Teknisi)</span>
-      </div>
-      <div class="card-body">
+      <!-- ============ TAB: NOTIFIKASI TELEGRAM ============ -->
+      <div class="tab-pane fade <?= $activeTab === 'telegram' ? 'show active' : '' ?>" id="pane-telegram" role="tabpanel" aria-labelledby="tab-telegram">
         <form method="POST" action="<?= BASE_URL ?>modules/pengaturan/act.php" id="formTelegram">
           <?php csrf_field(); ?>
           <input type="hidden" name="action" value="save_telegram">
@@ -359,6 +397,7 @@ ob_start();
           <span id="testTelegramResult" class="ml-2" style="font-size:12.5px"></span>
         </form>
       </div>
+
     </div>
   </div>
 </div>

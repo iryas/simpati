@@ -35,23 +35,12 @@ switch ($action) {
         $profile_isolir = mb_substr(trim(post('mikrotik_profile_isolir')), 0, 100);
         if ($profile_isolir === '') $profile_isolir = 'profile-Isolir2';
 
-        $kuota_harian = (float)post('kuota_harian_gb');
-        if ($kuota_harian < 0 || $kuota_harian > 1000) {
-            flash('danger', 'Kuota harian FUP tidak valid (0-1000 GB).');
-            redirect($back_url);
-        }
-
-        $profile_fup = mb_substr(trim(post('mikrotik_profile_fup')), 0, 100);
-        if ($profile_fup === '') $profile_fup = 'profile-FUP';
-
         $updates = [
             'tgl_mulai_tagihan'      => (string)$tgl,
             'nama_isp'               => $nama_isp,
             'grace_period_isolir'    => (string)$grace,
             'no_cs'                  => $no_cs,
             'mikrotik_profile_isolir' => $profile_isolir,
-            'kuota_harian_gb'        => (string)$kuota_harian,
-            'mikrotik_profile_fup'   => $profile_fup,
         ];
 
         foreach ($updates as $key => $val) {
@@ -64,7 +53,40 @@ switch ($action) {
         }
 
         flash('success', 'Pengaturan berhasil disimpan.');
-        redirect($back_url);
+        redirect($back_url . '?tab=umum');
+
+    case 'save_fup':
+        if (!csrf_verify()) {
+            flash('danger', 'Token tidak valid.');
+            redirect($back_url . '?tab=fup');
+        }
+
+        $fup_aktif = post('fup_aktif') === '1' ? '1' : '0';
+
+        $kuota_harian = (float)post('kuota_harian_gb');
+        if ($kuota_harian < 0 || $kuota_harian > 1000) {
+            flash('danger', 'Kuota harian FUP tidak valid (0-1000 GB).');
+            redirect($back_url . '?tab=fup');
+        }
+
+        $profile_fup = mb_substr(trim(post('mikrotik_profile_fup')), 0, 100);
+        if ($profile_fup === '') $profile_fup = 'profile-FUP';
+
+        foreach ([
+            'fup_aktif'            => $fup_aktif,
+            'kuota_harian_gb'      => (string)$kuota_harian,
+            'mikrotik_profile_fup' => $profile_fup,
+        ] as $key => $val) {
+            db_query(
+                "INSERT INTO app_settings (setting_key, setting_val)
+                 VALUES (?, ?)
+                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val), updated_at = NOW()",
+                [$key, $val]
+            );
+        }
+
+        flash('success', 'Pengaturan FUP berhasil disimpan.');
+        redirect($back_url . '?tab=fup');
 
     case 'save_wa':
     case 'save_wablas': // backward compat
@@ -95,7 +117,7 @@ switch ($action) {
         }
 
         flash('success', 'Pengaturan WhatsApp Gateway berhasil disimpan.');
-        redirect($back_url);
+        redirect($back_url . '?tab=wa');
 
     case 'save_telegram':
         if (!csrf_verify()) {
@@ -121,7 +143,7 @@ switch ($action) {
         }
 
         flash('success', 'Pengaturan Telegram berhasil disimpan.');
-        redirect($back_url);
+        redirect($back_url . '?tab=telegram');
 
     case 'test_telegram':
         if (!csrf_verify()) {
