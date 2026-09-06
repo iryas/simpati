@@ -38,8 +38,8 @@ ob_start();
 </div>
 
 <div class="card">
-  <div class="card-header p-0">
-    <ul class="nav nav-tabs card-header-tabs" id="pengaturanTab" role="tablist">
+  <div class="card-header" style="padding:0 20px;border-bottom:none">
+    <ul class="nav nav-tabs" id="pengaturanTab" role="tablist">
       <li class="nav-item">
         <a class="nav-link <?= $activeTab === 'umum' ? 'active' : '' ?>" id="tab-umum" data-toggle="tab"
            href="#pane-umum" role="tab" aria-controls="pane-umum" aria-selected="<?= $activeTab === 'umum' ? 'true' : 'false' ?>">
